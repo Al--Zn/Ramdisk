@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
+
 #define RAMDISK_PATH "/proc/ramdisk"
 
 /* ioctl commands */
@@ -43,7 +44,7 @@ int main(int argc, char **argv) {
 
 	/* Test 3: Mkdir Command */
 	printf("Test 3: Mkdir Command......");
-	ret = ioctl(fd, RD_MKDIR, 1);
+	ret = ioctl(fd, RD_MKDIR, 0);
 	if (ret < 0) {
 		printf("Failed.\n");
 	} else {
@@ -82,6 +83,29 @@ int main(int argc, char **argv) {
 		printf("Passed.\n");
 	}
 
+	printf("Test 8: Lseek Command......");
+	ret = ioctl(fd, RD_LSEEK, 0);
+	if (ret < 0) {
+		printf("Failed.\n");
+	} else {
+		printf("Passed.\n");
+	}
+
+	printf("Test 9: Unlink Command......");
+	ret = ioctl(fd, RD_UNLINK, 0);
+	if (ret < 0) {
+		printf("Failed.\n");
+	} else {
+		printf("Passed.\n");
+	}
+
+	printf("Test 10: Readdir Command......");
+	ret = ioctl(fd, RD_READDIR, 0);
+	if (ret < 0) {
+		printf("Failed.\n");
+	} else {
+		printf("Passed.\n");
+	}
 	// TODO
 
 }

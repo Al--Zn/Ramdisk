@@ -6,6 +6,8 @@
 #include <linux/slab.h>
 #include <linux/proc_fs.h>
 
+#include "ramdisk_fs.h"
+
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("LX & JTY");
 MODULE_DESCRIPTION("A ramdisk device.");
@@ -47,7 +49,8 @@ struct file_operations ramdisk_fops = {
 
 static int __init ramdisk_init(void) {
 	proc_create("ramdisk", 0444, NULL, &ramdisk_fops);
-	printk("Ramdisk Init.\n");
+	init_fs();
+	printk("Ramdisk Inited.\n");
 	// TODO
 	return 0;
 }
@@ -55,7 +58,7 @@ static int __init ramdisk_init(void) {
 static void __exit ramdisk_exit(void) {
 	// TODO
 	remove_proc_entry("ramdisk", NULL);
-	printk("Ramdisk Exit.\n");
+	printk("Ramdisk Exited.\n");
 	return;
 }
 
@@ -70,7 +73,6 @@ int ramdisk_release(struct inode *inode, struct file *file) {
 }
 
 long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
-	printk("The command is %d.\n", cmd);
 	switch(cmd) {
 		case RD_CREATE:
 			printk("Ramdisk ioctl create.\n");
