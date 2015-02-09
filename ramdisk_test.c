@@ -14,7 +14,6 @@
 #define RD_WRITE   0xf6
 #define RD_LSEEK   0xf7
 #define RD_UNLINK  0xf8
-#define RD_READDIR 0xf9
 
 
 
@@ -99,13 +98,7 @@ int main(int argc, char **argv) {
 		printf("Passed.\n");
 	}
 
-	printf("Test 10: Readdir Command......");
-	ret = ioctl(fd, RD_READDIR, 0);
-	if (ret < 0) {
-		printf("Failed.\n");
-	} else {
-		printf("Passed.\n");
-	}
+
 	// TODO
 
 }

@@ -12,17 +12,6 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("LX & JTY");
 MODULE_DESCRIPTION("A ramdisk device.");
 
-/* ioctl commands */
-#define RD_CREATE  0xf1 
-#define RD_MKDIR   0xf2
-#define RD_OPEN    0xf3
-#define RD_CLOSE   0xf4
-#define RD_READ    0xf5
-#define RD_WRITE   0xf6
-#define RD_LSEEK   0xf7
-#define RD_UNLINK  0xf8
-#define RD_READDIR 0xf9
-
 
 /* On Ramdisk Module Init */
 static int __init ramdisk_init(void);
@@ -49,7 +38,7 @@ struct file_operations ramdisk_fops = {
 
 static int __init ramdisk_init(void) {
 	proc_create("ramdisk", 0444, NULL, &ramdisk_fops);
-	init_fs();
+	ramfs_init();
 	printk("Ramdisk Inited.\n");
 	// TODO
 	return 0;
@@ -97,9 +86,6 @@ long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
 			return 0;
 		case RD_UNLINK:
 			printk("Ramdisk ioctl unlink.\n");
-			return 0;
-		case RD_READDIR:
-			printk("Ramdisk ioctl readdir.\n");
 			return 0;
 		default:
 			/* Control should never reach here =w= */
