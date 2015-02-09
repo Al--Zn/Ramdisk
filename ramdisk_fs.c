@@ -15,7 +15,7 @@ int init_fs(void) {
 		printk("Ramdisk Memory Allocation Failed.\n");
 		return -1;
 	} else {
-		printk("Ramdisk Memrory Allocated.\n");
+		printk("Ramdisk Memory Allocated.\n");
 	}
 
 	first_inodes_block = first_block + RD_SUPERBLOCK_SIZE;
@@ -68,7 +68,7 @@ int init_bitmap(void) {
 
 int init_data_blocks(void) {
 	memset(first_data_block, 0, RD_DATA_BLOCKS_SIZE);
-	// TODO: int root dir's data block
+	// TODO: init root dir's data block
 	return 0;
 }
 
