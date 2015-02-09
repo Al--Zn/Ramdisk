@@ -10,19 +10,16 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("LX & JTY");
 MODULE_DESCRIPTION("A ramdisk device.");
 
-
 /* ioctl commands */
-enum {
-	RD_CREATE,
-	RD_MKDIR,
-	RD_OPEN,
-	RD_CLOSE,
-	RD_READ,
-	RD_WRITE,
-	RD_LSEEK,
-	RD_UNLINK,
-	RD_READDIR
-};
+#define RD_CREATE  0xf1 
+#define RD_MKDIR   0xf2
+#define RD_OPEN    0xf3
+#define RD_CLOSE   0xf4
+#define RD_READ    0xf5
+#define RD_WRITE   0xf6
+#define RD_LSEEK   0xf7
+#define RD_UNLINK  0xf8
+#define RD_READDIR 0xf9
 
 
 /* On Ramdisk Module Init */
@@ -42,7 +39,9 @@ long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg);
 
 /* File Operations */
 struct file_operations ramdisk_fops = {
-	unlocked_ioctl: ramdisk_ioctl
+	unlocked_ioctl: ramdisk_ioctl,
+	open          : ramdisk_open,
+	release       : ramdisk_release
 };
 
 
@@ -60,7 +59,18 @@ static void __exit ramdisk_exit(void) {
 	return;
 }
 
+int ramdisk_open(struct inode *inode, struct file *file) {
+	printk("Ramdisk Opened.\n");
+	return 0;
+}
+
+int ramdisk_release(struct inode *inode, struct file *file) {
+	printk("Ramdisk Released.\n");
+	return 0;
+}
+
 long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
+	printk("The command is %d.\n", cmd);
 	switch(cmd) {
 		case RD_CREATE:
 			printk("Ramdisk ioctl create.\n");
