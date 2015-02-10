@@ -79,7 +79,6 @@ int data_init(void) {
 	rd_dentry *self_dentry;		/* for "." */
 
 	memset(first_data_block, 0, RD_DATA_BLOCKS_SIZE);
-	// TODO: init root dir's data block
 	self_dentry = (rd_dentry*)first_data_block;
 	self_dentry->inode_num = 0;
 	strcpy(self_dentry->filename, ".");
@@ -161,7 +160,9 @@ void free_inode(rd_inode *inode) {
 }
 
 void free_block(char *block) {
-	// TODO
+	int bitmap_index;
+	bitmap_index = (int)(block - first_data_block) / RD_BLOCK_SIZE;
+	*(first_bitmap_block + bitmap_index) = 0;
 }
 
 /*
@@ -170,7 +171,63 @@ void free_block(char *block) {
  * function returns -1, otherwise 0.
  */
 int parse_path(const char *path, rd_inode **parent_inode, char *filename) {
-	// TODO
+	char* tmp;
+	char* next_dir;
+	char* block;
+
+	rd_inode* cur_inode;
+	rd_inode* par_inode;
+
+	bool found;
+	int size_count;
+	int i, j;
+	int dir_num;
+
+	tmp = (char *)vmalloc(strlen(path));
+	strcpy(tmp, path);
+
+
+	cur_inode = inode_list;
+	par_inode = cur_inode;
+	next_dir = strsep(&tmp, "/");
+
+	while (next_dir != NULL) {
+		
+		
+		if (cur_inode->file_type != RD_DIRECTORY) return -1;
+
+		// Current file is a directory
+		for (i = 0, size_count = 0, found = false; i < cur_inode->block_count; ++i) {
+
+			// TODO: multi-level index
+
+			block = cur_inode->block_addr[i];
+			
+			dir_num = RD_BLOCK_SIZE / sizeof(rd_dentry);
+			for (j = 0; j < dir_num; ++i) {
+				rd_dentry* dentry = (rd_dentry*) (block + j*sizeof(rd_dentry));
+				if (strcmp(dentry->filename, next_dir) == 0) {
+					par_inode = cur_inode;
+					cur_inode = inode_list + dentry->inode_num;
+					found = true;
+					break;
+				}
+
+				// ensure not visiting over the border
+				size_count += sizeof(rd_dentry);
+				if (size_count > cur_inode->file_size) break;
+			}
+			if (found) break;
+			if (size_count > cur_inode->file_size) break;
+		}
+
+		if (!found) return -1;
+
+		next_dir = strsep(&tmp, "/");
+    }
+
+    *parent_inode = par_inode;
+	
 	return 0;
 }
 
@@ -178,7 +235,7 @@ int parse_path(const char *path, rd_inode **parent_inode, char *filename) {
  * Add a file's dentry to its parent's dir file.
  *
  */
-int add_dentry(rd_inode *parent_inode, char *parent_block, int inode_num, char *filename) {
+int add_dentry(rd_inode *parent_inode, int inode_num, char *filename) {
 	// TODO
 	return 0;
 }
@@ -190,7 +247,6 @@ int add_dentry(rd_inode *parent_inode, char *parent_block, int inode_num, char *
 int ramfs_create(const char *path) {
 	rd_inode *parent_inode;
 	rd_inode *file_inode;
-	char *parent_block;
 	char *file_block;
 	char *filename;
 	rd_dentry *dentry;
@@ -225,7 +281,7 @@ int ramfs_create(const char *path) {
 	file_inode->block_addr[0] = file_block;
 
 	/* Add a dentry to its parent */
-	ret = add_dentry(parent_inode, parent_block, file_inode->inode_num, filename);
+	ret = add_dentry(parent_inode, file_inode->inode_num, filename);
 	if (ret == -1) {
 		printk("Error: Cannot add dentry.\n");
 		free_inode(file_inode);
@@ -236,4 +292,3 @@ int ramfs_create(const char *path) {
 	return 0;
 
 }
-

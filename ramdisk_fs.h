@@ -105,7 +105,7 @@ void free_block(char *block);
 int parse_path(const char *path, rd_inode **parent_inode, char *filename);
 
 /* Dentry Functions */
-int add_dentry(rd_inode *parent_inode, char *parent_block, int inode_num, char *filename);
+int add_dentry(rd_inode *parent_inode, int inode_num, char *filename);
 
 /* ioctl functions */
 int ramfs_create(const char *path);
