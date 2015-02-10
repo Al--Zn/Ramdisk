@@ -41,6 +41,7 @@ typedef struct {
     unsigned short inode_num;   /* inode number */
     unsigned short file_type;   /* file type (RD_FILE or RD_DIRECTORY) */
     unsigned int block_count;   /* file size (number of blocks) */
+    unsigned int file_size;     /* file size (byte) */
     char* block_addr[10];       /* direct block index */
     char* first_level_index;    /* 1st level index */
     char* second_level_index;   /* 2nd level index */
@@ -91,13 +92,22 @@ int inodes_init(void);
 int bitmap_init(void);
 int data_init(void);
 
-/* Block Operation Functions */
-rd_inode* find_free_inode(void);
-char* allocate_block(rd_inode *inode);
+/* Exit Functions */
 int ramfs_exit(void);
 
-/* ioctl functions */
+/* Block Operation Functions */
+rd_inode* allocate_inode(void);
+char* allocate_block(void);
+void free_inode(rd_inode *inode);
+void free_block(char *block);
 
+/* Path Functions */
+int parse_path(const char *path, rd_inode **parent_inode, char *filename);
+
+/* Dentry Functions */
+int add_dentry(rd_inode *parent_inode, char *parent_block, int inode_num, char *filename);
+
+/* ioctl functions */
 int ramfs_create(const char *path);
 int ramfs_mkdir(const char *path);
 int ramfs_open(const char *path);
