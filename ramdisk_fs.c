@@ -178,7 +178,7 @@ int parse_path(const char *path, rd_inode **parent_inode, char *filename) {
 	rd_inode* cur_inode;
 	rd_inode* par_inode;
 
-	bool found;
+	bool found = true; // if the path if '/', return true
 	int size_count;
 	int i, j;
 	int dir_num;
@@ -221,14 +221,17 @@ int parse_path(const char *path, rd_inode **parent_inode, char *filename) {
 			if (size_count > cur_inode->file_size) break;
 		}
 
-		if (!found) return -1;
-
+		strcpy(filename, next_dir);
 		next_dir = strsep(&tmp, "/");
+
+		// A directory in the middle of the path not found
+		if (!found && next_dir != NULL) return -1;
     }
 
     *parent_inode = par_inode;
 	
-	return 0;
+	if (found) return 1;
+	else return 0;
 }
 
 /*
