@@ -31,6 +31,9 @@ int ramfs_init(void) {
 	data_init();
 	allocate_block();
 	allocate_block();
+	show_blocks_status();
+	show_inodes_status();
+	show_dir_status("/");
 	return 0;
 }
 
@@ -47,7 +50,7 @@ int superblock_init(void) {
 
 int inodes_init(void) {
 	int i;
-	for (i = 1; i < RD_INODE_NUM; ++i) {
+	for (i = 0; i < RD_INODE_NUM; ++i) {
 		inode_list[i].inode_num = i;
 		inode_list[i].file_type = RD_AVAILABLE;
 		inode_list[i].block_count = 0;
@@ -60,8 +63,9 @@ int inodes_init(void) {
 
 	inode_list[0].file_type = RD_DIRECTORY;
 	inode_list[0].block_count = 1;
-	inode_list[0].file_size = sizeof(rd_dentry) * 2; /* "." and ".."'s dentry' */
 	inode_list[0].block_addr[0] = first_data_block;
+	superblock->freeblock_count--;
+	superblock->freeinode_count--;
 	return 0;
 }
 
@@ -75,17 +79,21 @@ int bitmap_init(void) {
 }
 
 int data_init(void) {
-	rd_dentry *parent_dentry;	/* for ".." */
-	rd_dentry *self_dentry;		/* for "." */
+	//rd_dentry *parent_dentry;	/* for ".." */
+	//rd_dentry *self_dentry;		/* for "." */
 
 	memset(first_data_block, 0, RD_DATA_BLOCKS_SIZE);
-	self_dentry = (rd_dentry*)first_data_block;
-	self_dentry->inode_num = 0;
-	strcpy(self_dentry->filename, ".");
+	
+	// self_dentry = (rd_dentry*)first_data_block;
+	// self_dentry->inode_num = 0;
+	// strcpy(self_dentry->filename, ".");
 
-	parent_dentry = self_dentry + 1;
-	parent_dentry->inode_num = 0;
-	strcpy(parent_dentry->filename, "..");
+	// parent_dentry = self_dentry + 1;
+	// parent_dentry->inode_num = 0;
+	// strcpy(parent_dentry->filename, "..");
+
+	add_dentry(&inode_list[0], 0, ".");
+	add_dentry(&inode_list[0], 0, "..");
 
 	return 0;
 }
@@ -190,7 +198,7 @@ int parse_path(const char *path, rd_inode **parent_inode, char *filename) {
 	cur_inode = inode_list;
 	par_inode = cur_inode;
 	next_dir = strsep(&tmp, "/");
-
+	next_dir = strsep(&tmp, "/");
 	while (next_dir != NULL) {
 		
 		
@@ -239,7 +247,39 @@ int parse_path(const char *path, rd_inode **parent_inode, char *filename) {
  *
  */
 int add_dentry(rd_inode *parent_inode, int inode_num, char *filename) {
-	// TODO
+	int parent_file_size;
+	int parent_block_count;
+	char *parent_last_block;
+	rd_dentry *dentry;
+	int offset;
+	parent_file_size = parent_inode->file_size;
+	parent_block_count = parent_inode->block_count;
+
+	offset = parent_file_size % RD_BLOCK_SIZE;
+	/* find the last block, if not enough block size remains, allocate a new block */
+	if (offset + sizeof(rd_dentry) > RD_BLOCK_SIZE) {
+		if (parent_block_count == 10) {
+			printk("Error: Failed to add dentry, max file size reached.\n");
+			return -1;
+		}
+		parent_inode->block_addr[parent_block_count] = allocate_block();
+		parent_last_block = parent_inode->block_addr[parent_block_count];
+		if (parent_last_block == NULL) {
+			printk("Error: Failed to add dentry, no free blocks available.\n");
+			return -1;
+		}
+		parent_inode->block_count++;
+		offset = 0;
+	} else {
+		parent_last_block = parent_inode->block_addr[parent_block_count-1];
+	}
+	printk("add dentry: %p\n", parent_last_block + offset);
+	/* write the dentry */
+	dentry = (rd_dentry*)(parent_last_block + offset);
+	dentry->inode_num = inode_num;
+	strcpy(dentry->filename, filename);
+	parent_inode->file_size += sizeof(rd_dentry);
+	// TODO: 1st level index
 	return 0;
 }
 
@@ -292,6 +332,83 @@ int ramfs_create(const char *path) {
 		return -1;
 	}
 
+	return 0;
+
+}
+
+int show_blocks_status(void) {
+	int i, j;
+	char byte;
+	printk("====================Block Status====================\n");
+	printk("Available free blocks: %d. Total: %d\n\n", superblock->freeblock_count, superblock->block_count);
+	printk("BlkNum\tBlkAddr\n");
+	for (i = 0; i < RD_BLOCKBITMAP_SIZE; ++i) {
+		byte = *(first_bitmap_block + i);
+		for (j = 0; j < 8; ++j) {
+			if ((byte >> j) & 1) {
+				printk("%d\t%p\n", i * 8 + j, first_data_block + (i * 8 + j) * RD_BLOCK_SIZE);
+			}
+		}
+	}
+	printk("====================================================\n");
+	return 0;
+}
+
+int show_inodes_status(void) {
+	int i, j;
+	printk("====================Inode Status====================\n");
+	printk("Available free inodes: %d, Total: %d\n\n", superblock->freeinode_count, superblock->inode_count);
+	printk("InodeNum\tType\tBlkCnt\tSize\tBlkAddr\n");
+	for (i = 0; i < RD_INODE_NUM; ++i) {
+		if (inode_list[i].file_type != RD_AVAILABLE) {
+			printk("%d\t%d\t%d\t%d\t", inode_list[i].inode_num, 
+				                         inode_list[i].file_type,
+				                         inode_list[i].block_count,
+				                         inode_list[i].file_size);
+			for (j = 0; j < 10; ++j) {
+				if (inode_list[i].block_addr[j] == NULL)
+					break;
+				if (j != 0)
+					printk("\t\t\t\t\t");
+				printk("%p\n", inode_list[i].block_addr[j]);
+			}
+		}
+
+	}
+	printk("====================================================\n");
+
+	return 0;
+}
+
+int show_dir_status(const char *path) {
+	char *filename;
+	rd_inode *inode;
+	int ret, i, j, size_count, max_dentry_num;
+	rd_dentry *dentry;
+
+	filename = (char*)vmalloc(60);
+	ret = parse_path(path, &inode, filename);
+	if (ret == -1) {
+		printk("Error: Cannot show the dir status. Invalid path.\n");
+		return -1;
+	}
+	printk("==================Directory Status==================\n");
+	printk("Directory Path: %s\n\n", path);
+	printk("InodeNum\tFilename\n");
+	size_count = 0;
+	max_dentry_num = RD_BLOCK_SIZE / sizeof(rd_dentry);
+	for (i = 0 ; i < inode->block_count; ++i) {
+		dentry = (rd_dentry*)inode->block_addr[i];
+		for (j = 0; j < max_dentry_num; ++j) {
+			printk("%d\t%s\n", dentry->inode_num, dentry->filename);
+			size_count += sizeof(rd_dentry);
+			if (size_count >= inode->file_size) {
+				printk("====================================================\n");
+				return 0;
+			}
+			dentry++;
+		}
+	}
 	return 0;
 
 }

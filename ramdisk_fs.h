@@ -107,7 +107,7 @@ int parse_path(const char *path, rd_inode **parent_inode, char *filename);
 /* Dentry Functions */
 int add_dentry(rd_inode *parent_inode, int inode_num, char *filename);
 
-/* ioctl functions */
+/* Ioctl Functions */
 int ramfs_create(const char *path);
 int ramfs_mkdir(const char *path);
 int ramfs_open(const char *path);
@@ -116,3 +116,8 @@ int ramfs_read(int fd, void *buf, size_t count);
 int ramfs_write(int fd, void *buf, size_t count);
 int ramfs_lseek(int fd, int offset);
 int ramfs_unlink(const char *path);
+
+/* Test Functions*/
+int show_blocks_status(void);
+int show_inodes_status(void);
+int show_dir_status(const char *path);
