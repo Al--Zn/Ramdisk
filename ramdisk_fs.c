@@ -34,6 +34,10 @@ int ramfs_init(void) {
 	show_blocks_status();
 	show_inodes_status();
 	show_dir_status("/");
+	ramfs_create("/a.txt");
+	show_blocks_status();
+	show_inodes_status();	
+	show_dir_status("/");
 	return 0;
 }
 
@@ -296,7 +300,7 @@ int ramfs_create(const char *path) {
 	int ret;
 
 	dentry = NULL;
-	filename = NULL;
+	filename = (char*)vmalloc(60);
 
 	if (parse_path(path, &parent_inode, filename) == -1) {
 		printk("Error: Invalid Path.\n");
@@ -356,13 +360,25 @@ int show_blocks_status(void) {
 
 int show_inodes_status(void) {
 	int i, j;
+	char* dirtype;
+	char* filetype;
+	char *type;
 	printk("====================Inode Status====================\n");
 	printk("Available free inodes: %d, Total: %d\n\n", superblock->freeinode_count, superblock->inode_count);
 	printk("InodeNum\tType\tBlkCnt\tSize\tBlkAddr\n");
+
+
+
+	dirtype = "dir";
+	filetype = "file";
 	for (i = 0; i < RD_INODE_NUM; ++i) {
 		if (inode_list[i].file_type != RD_AVAILABLE) {
-			printk("%d\t%d\t%d\t%d\t", inode_list[i].inode_num, 
-				                         inode_list[i].file_type,
+			if (inode_list[i].file_type == RD_FILE)
+				type = filetype;
+			else
+				type = dirtype;
+			printk("%d\t%s\t%d\t%d\t", inode_list[i].inode_num, 
+				                         type,
 				                         inode_list[i].block_count,
 				                         inode_list[i].file_size);
 			for (j = 0; j < 10; ++j) {
