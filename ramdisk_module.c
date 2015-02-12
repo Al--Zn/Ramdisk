@@ -62,6 +62,9 @@ int ramdisk_release(struct inode *inode, struct file *file) {
 }
 
 long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
+	//char path[128];
+	//char dir[128];
+	//int i, ret, j;
 	switch(cmd) {
 		case RD_CREATE:
 			printk("Ramdisk ioctl create.\n");
@@ -76,24 +79,36 @@ long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
 			/* test creating a file under a dir other than root */
 			ramfs_mkdir("/c");
 			ramfs_create("/c/jty.txt");
+			/* test tremendous file creation commands */
+			// for (j = 0; j < 10; ++j) {
+			// 	sprintf(dir, "/%d", j);
+			// 	ramfs_mkdir(dir);
+			// 	for (i = 0;;++i) {
+			// 		sprintf(path, "/%d/%d.txt", j, i);
+
+			// 		ret = ramfs_create(path);
+			// 		if (ret == -1)
+			// 			break;
+			// 	}
+			// }
 			return 0;
 		case RD_MKDIR:
 			/* test make a normal dir */
 			ramfs_mkdir("/a");
 			/* test make a dir under a dir other than root */
 			ramfs_mkdir("/a/b/");
-			printk("Ramdisk ioctl mkdir.\n");
+			//printk("Ramdisk ioctl mkdir.\n");
 			return 0;
 		case RD_OPEN:
-			printk("Ramdisk ioctl open.\n");
-			ramfs_open("/c/jty.txt", RD_RDWR);
-			show_blocks_status();
-			show_inodes_status();
-			show_dir_status("/");
-			show_dir_status("/a");
-			show_dir_status("/a/b/");
-			show_dir_status("/c");
-			show_fdt_status();
+			// printk("Ramdisk ioctl open.\n");
+			 ramfs_open("/c/jty.txt", RD_RDWR);
+			 show_blocks_status();
+			 show_inodes_status();
+			 show_dir_status("/");
+			 show_dir_status("/a");
+			 show_dir_status("/a/b/");
+			 show_dir_status("/c");
+			 show_fdt_status();
 			return 0;
 		case RD_CLOSE:
 			printk("Ramdisk ioctl close.\n");

@@ -301,6 +301,7 @@ int add_dentry(rd_inode *parent_inode, int inode_num, char *filename) {
 	offset = parent_file_size % RD_BLOCK_SIZE;
 	/* find the last block, if not enough block size remains, allocate a new block */
 	if (offset + sizeof(rd_dentry) > RD_BLOCK_SIZE) {
+		parent_inode->file_size += RD_BLOCK_SIZE - offset;
 		if (parent_block_count == 10) {
 			printk("Error: Failed to add dentry, max file size reached.\n");
 			return -1;
@@ -312,6 +313,7 @@ int add_dentry(rd_inode *parent_inode, int inode_num, char *filename) {
 			return -1;
 		}
 		parent_inode->block_count++;
+		
 		offset = 0;
 	} else {
 		parent_last_block = parent_inode->block_addr[parent_block_count-1];
@@ -372,6 +374,7 @@ int ramfs_create(const char *path) {
 	rd_dentry *dentry;
 	int ret;
 
+	printk("Create '%s'...\n", path);
 	dentry = NULL;
 	filename = (char*)vmalloc(60);
 	ret = parse_path(path, RD_FILE, &parent_inode, &file_inode, filename);
@@ -426,6 +429,7 @@ int ramfs_mkdir(const char *path) {
 	rd_dentry *dentry;
 	int ret;
 
+	printk("Mkdir '%s'...\n", path);
 	dentry = NULL;
 	filename = (char*)vmalloc(60);
 	ret = parse_path(path, RD_DIRECTORY, &parent_inode, &file_inode, filename);
@@ -498,7 +502,9 @@ int ramfs_open(const char *path, int mode) {
 	rd_file *file;
 	char *filename;
 
+	printk("Open '%s'...\n", path);
 	filename = (char *)vmalloc(60);
+
 
 	ret = parse_path(path, RD_FILE, &par_inode, &file_inode, filename);
 
@@ -525,6 +531,7 @@ int ramfs_open(const char *path, int mode) {
 	file->cur_offset = 0;
 	file->mode = mode;
 
+	printk("Successfully open '%s'.\n", path);
 	return fd;
 }
 
@@ -619,6 +626,7 @@ int show_dir_status(const char *path) {
 			}
 			dentry++;
 		}
+		size_count += RD_BLOCK_SIZE - (size_count % RD_BLOCK_SIZE);
 	}
 	return 0;
 
