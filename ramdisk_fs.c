@@ -185,7 +185,10 @@ char* allocate_block() {
 void free_inode(rd_inode *inode) {
 	
 	inode->file_type = RD_AVAILABLE;
-	
+	inode->block_count = 0;
+	inode->file_size = 0;
+	memset(inode->block_addr, 0, sizeof(inode->block_addr));
+	superblock->freeinode_count++;
 }
 
 void free_fd(int fd) {
@@ -194,9 +197,20 @@ void free_fd(int fd) {
 }
 
 void free_block(char *block) {
-	int bitmap_index;
-	bitmap_index = (int)(block - first_data_block) / RD_BLOCK_SIZE;
-	*(first_bitmap_block + bitmap_index) = 0;
+	int block_num;
+	int i, j;
+	char *byte;
+	block_num = (block - first_data_block) / RD_BLOCK_SIZE;
+	i = block_num / 8;
+	j = block_num % 8;
+	byte = first_bitmap_block + i;
+	*byte = (*byte) & (~(1 << j));
+	superblock->freeblock_count++;
+}
+
+void free_dentry(rd_dentry *dentry) {
+	dentry->inode_num = -1;
+	memset(dentry->filename, 0, sizeof(dentry->filename));
 }
 
 /*
@@ -294,11 +308,30 @@ int add_dentry(rd_inode *parent_inode, int inode_num, char *filename) {
 	int parent_block_count;
 	char *parent_last_block;
 	rd_dentry *dentry;
-	int offset;
+	int offset, i, j, size_count, max_dentry_num;
 	parent_file_size = parent_inode->file_size;
 	parent_block_count = parent_inode->block_count;
-
+	max_dentry_num = RD_BLOCK_SIZE / sizeof(rd_dentry);
 	offset = parent_file_size % RD_BLOCK_SIZE;
+	size_count = 0;
+	/* find if there are some invalid dentry(file unlinked) */
+	for (i = 0; i < parent_inode->block_count; ++i) {
+		dentry = (rd_dentry*)parent_inode->block_addr[i];
+		for (j = 0; j < max_dentry_num; ++j) {
+			if (dentry->inode_num == -1) {
+				dentry->inode_num = inode_num;
+				strcpy(dentry->filename, filename);
+				return 0;
+			}
+			size_count += sizeof(rd_dentry);
+			if (size_count >= parent_inode->file_size)
+				break;
+			dentry++; 
+		}
+		if (size_count >= parent_inode->file_size)
+			break;
+		size_count += RD_BLOCK_SIZE - (size_count % RD_BLOCK_SIZE);
+	}
 	/* find the last block, if not enough block size remains, allocate a new block */
 	if (offset + sizeof(rd_dentry) > RD_BLOCK_SIZE) {
 		parent_inode->file_size += RD_BLOCK_SIZE - offset;
@@ -350,13 +383,13 @@ rd_dentry* get_dentry(const char *path) {
 	for (i = 0; i < par_inode->block_count; ++i) {
 		dentry = (rd_dentry*)par_inode->block_addr[i];
 		for (j = 0; j < dir_num; ++j) {
-			dentry = dentry + 1;
 			if (dentry->inode_num == file_inode->inode_num) {
 				return dentry;
 			}
 			size_count += sizeof(rd_dentry);
 			if (size_count >= par_inode->file_size)
 				break;
+			dentry++;
 		}
 	}
 
@@ -404,6 +437,7 @@ int ramfs_create(const char *path) {
 
 	/* Init this inode */
 	file_inode->file_type = RD_FILE;
+	file_inode->file_size = 0;
 	file_inode->block_count = 1;
 	file_inode->block_addr[0] = file_block;
 
@@ -458,6 +492,7 @@ int ramfs_mkdir(const char *path) {
 
 	/* Init this inode */
 	file_inode->file_type = RD_DIRECTORY;
+	file_inode->file_size = 0;
 	file_inode->block_count = 1;
 	file_inode->block_addr[0] = file_block;
 
@@ -491,6 +526,33 @@ int ramfs_mkdir(const char *path) {
 	return 0;	
 }
 
+int ramfs_unlink(const char *path) {
+	rd_inode *parent_inode;
+	rd_inode *file_inode;
+	char *filename;
+	rd_dentry *dentry;
+	int ret, i;
+
+	printk("Unlink '%s'...\n", path);
+	dentry = NULL;
+	filename = (char*)vmalloc(60);
+	ret = parse_path(path, RD_FILE, &parent_inode, &file_inode, filename);
+	if (ret == -1) {
+		printk("Error: Invalid path '%s'.\n", path);
+		return -1;
+	} else if (ret == 0) {
+		printk("Error: File '%s' doesn't exist.\n", path);
+		return -1;
+	}
+
+	dentry = get_dentry(path);
+	free_dentry(dentry);
+	for (i = 0; i < file_inode->block_count; ++i)
+		free_block(file_inode->block_addr[i]);
+	free_inode(file_inode);
+	printk("Successfully unlink '%s'.\n", path);
+	return 0;
+}
 /* 
  * Open a file
  * Allocate a new fd for this file, then return the fd.
@@ -618,7 +680,8 @@ int show_dir_status(const char *path) {
 	for (i = 0 ; i < inode->block_count; ++i) {
 		dentry = (rd_dentry*)inode->block_addr[i];
 		for (j = 0; j < max_dentry_num; ++j) {
-			printk("%d\t%s\n", dentry->inode_num, dentry->filename);
+			if (dentry->inode_num != -1)
+				printk("%d\t%s\n", dentry->inode_num, dentry->filename);
 			size_count += sizeof(rd_dentry);
 			if (size_count >= inode->file_size) {
 				printk("====================================================\n");

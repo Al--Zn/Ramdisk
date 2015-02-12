@@ -50,7 +50,7 @@ typedef struct {
 
 /* Data structure of Dentry */
 typedef struct {
-    unsigned short inode_num;       /* inode number */
+    short inode_num;       /* inode number */
     char filename[60]; /* file name */
 } rd_dentry;
 
@@ -119,7 +119,7 @@ char* allocate_block(void);
 void free_inode(rd_inode *inode);
 void free_fd(int fd);
 void free_block(char *block);
-
+void free_dentry(rd_dentry *dentry);
 
 /* Path Functions */
 int parse_path(const char *path, int type, rd_inode **parent_inode, rd_inode **file_inode, char *filename);

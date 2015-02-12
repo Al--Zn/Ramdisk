@@ -124,6 +124,14 @@ long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
 			return 0;
 		case RD_UNLINK:
 			printk("Ramdisk ioctl unlink.\n");
+			ramfs_unlink("/jty.txt");
+			show_blocks_status();
+			show_inodes_status();
+			show_dir_status("/");
+			ramfs_create("/haha.txt");
+			show_blocks_status();
+			show_inodes_status();
+			show_dir_status("/");
 			return 0;
 		default:
 			/* Control should never reach here =w= */
