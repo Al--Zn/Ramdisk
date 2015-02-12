@@ -82,19 +82,18 @@ long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
 			ramfs_mkdir("/a");
 			/* test make a dir under a dir other than root */
 			ramfs_mkdir("/a/b/");
-			show_blocks_status();
-			show_inodes_status();
-			show_dir_status("/");
-			show_dir_status("/a");
-			show_dir_status("/a/");
-			show_dir_status("/a/b");
-			show_dir_status("/a/b/");
-			show_dir_status("/c");
-			// show_dir_status("/a/b");
 			printk("Ramdisk ioctl mkdir.\n");
 			return 0;
 		case RD_OPEN:
 			printk("Ramdisk ioctl open.\n");
+			ramfs_open("/c/jty.txt", RD_RDWR);
+			show_blocks_status();
+			show_inodes_status();
+			show_dir_status("/");
+			show_dir_status("/a");
+			show_dir_status("/a/b/");
+			show_dir_status("/c");
+			show_fdt_status();
 			return 0;
 		case RD_CLOSE:
 			printk("Ramdisk ioctl close.\n");

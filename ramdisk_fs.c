@@ -7,6 +7,8 @@ static char *first_inodes_block;	/* first block addr of inodes region */
 static char *first_bitmap_block;	/* first block addr of bitmap region */
 static char *first_data_block;		/* first block addr of data region */
 
+static rd_file **fd_list;
+
 int ramfs_init(void) {
 
 	first_block = (char *)vmalloc(RD_DISK_SIZE);
@@ -29,6 +31,7 @@ int ramfs_init(void) {
 	inodes_init();
 	bitmap_init();
 	data_init();
+	fdt_init();
 	return 0;
 }
 
@@ -93,6 +96,14 @@ int data_init(void) {
 	return 0;
 }
 
+int fdt_init(void) {
+	int i;
+	fd_list = (rd_file**)vmalloc(sizeof(rd_file*) * RD_MAX_FILE);
+	for (i = 0; i < RD_MAX_FILE; ++i) {
+		fd_list[i] = NULL;
+	}
+	return 0;
+}
 int ramfs_exit(void) {
 	if (first_block) {
 		vfree(first_block);
@@ -117,6 +128,21 @@ rd_inode* allocate_inode() {
 		}
 	}
 	return NULL;
+}
+
+/*
+ * Allocate a free fd.
+ */
+int allocate_fd() {
+	int i;
+	for (i = 0; i < RD_MAX_FILE; ++i) {
+		if (fd_list[i] == NULL) {
+			fd_list[i] = (rd_file*)vmalloc(sizeof(rd_file));
+			return i;
+		}
+	}
+	/* No free fd available */
+	return -1;
 }
 
 /*
@@ -157,9 +183,14 @@ char* allocate_block() {
 }
 
 void free_inode(rd_inode *inode) {
-	// TODO
+	
 	inode->file_type = RD_AVAILABLE;
 	
+}
+
+void free_fd(int fd) {
+	vfree(fd_list[fd]);
+	fd_list[fd] = NULL;
 }
 
 void free_block(char *block) {
@@ -294,6 +325,41 @@ int add_dentry(rd_inode *parent_inode, int inode_num, char *filename) {
 	return 0;
 }
 
+rd_dentry* get_dentry(const char *path) {
+	rd_dentry *dentry;
+	rd_inode *par_inode;
+	rd_inode *file_inode;
+	char *filename;
+	int ret, i, j, dir_num, size_count;
+
+
+	filename = (char*)vmalloc(60);
+	ret = parse_path(path, RD_FILEORDIR, &par_inode, &file_inode, filename);
+	dir_num = RD_BLOCK_SIZE / sizeof(rd_dentry);
+	size_count = 0;
+	if (ret == -1) {
+		printk("Error: Invalid path %s.\n", path);
+		return NULL;
+	} else if (ret == 0) {
+		printk("Error: File '%s' doesn't exist.\n", path);
+		return NULL;
+	}
+
+	for (i = 0; i < par_inode->block_count; ++i) {
+		dentry = (rd_dentry*)par_inode->block_addr[i];
+		for (j = 0; j < dir_num; ++j) {
+			dentry = dentry + 1;
+			if (dentry->inode_num == file_inode->inode_num) {
+				return dentry;
+			}
+			size_count += sizeof(rd_dentry);
+			if (size_count >= par_inode->file_size)
+				break;
+		}
+	}
+
+	return NULL;
+}
 /* 
  * Create a file according to the given ABSOLUTE path
  * Eg: ramfs_create("/a.txt")
@@ -421,6 +487,47 @@ int ramfs_mkdir(const char *path) {
 	return 0;	
 }
 
+/* 
+ * Open a file
+ * Allocate a new fd for this file, then return the fd.
+ */
+int ramfs_open(const char *path, int mode) {
+	int ret, fd;
+	rd_inode *par_inode;
+	rd_inode *file_inode;
+	rd_file *file;
+	char *filename;
+
+	filename = (char *)vmalloc(60);
+
+	ret = parse_path(path, RD_FILE, &par_inode, &file_inode, filename);
+
+	if (ret == -1) {
+		printk("Error: Invalid path '%s'.\n", path);
+		return -1;
+	} else if (ret == 0) {
+		printk("Error: File '%s' doesn't exist.\n", path);
+		return -1;
+	}
+	/* allocate a new fd */
+
+	fd = allocate_fd();
+	if (fd == -1) {
+		printk("Error: No free fd available.\n");
+		return -1;
+	}
+
+	file = fd_list[fd];
+	strcpy(file->path, path);
+	file->inode = file_inode;
+	file->dentry = get_dentry(path);
+	file->cur_block = file_inode->block_addr[0];
+	file->cur_offset = 0;
+	file->mode = mode;
+
+	return fd;
+}
+
 int show_blocks_status(void) {
 	int i, j;
 	char byte;
@@ -515,4 +622,21 @@ int show_dir_status(const char *path) {
 	}
 	return 0;
 
+}
+
+int show_fdt_status(void) {
+	int i;
+	rd_file *file;
+
+	file = NULL;
+	printk("=====================FDT Status=====================\n");
+	printk("Fd\tInodeNum\tOffset\tBlock\n");
+	for (i = 0; i < RD_MAX_FILE; ++i) {
+		if (fd_list[i] == NULL)
+			continue;
+		file = fd_list[i];
+		printk("%d\t%d\t\t%d\t%p\n", i, file->inode->inode_num, file->cur_offset, file->cur_block);
+	}
+	printk("====================================================\n");
+	return 0;
 }
