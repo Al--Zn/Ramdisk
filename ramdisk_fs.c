@@ -597,6 +597,17 @@ int ramfs_open(const char *path, int mode) {
 	return fd;
 }
 
+int ramfs_close(int fd) {
+	printk("Close %d.\n", fd);
+	if (fd < 0) {
+		printk("Error: Invalid fd %d.\n", fd);
+		return -1;
+	}
+	free_fd(fd);
+	printk("Successfully close %d.\n", fd);
+	return 0;
+}
+
 int show_blocks_status(void) {
 	int i, j;
 	char byte;

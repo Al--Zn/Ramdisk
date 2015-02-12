@@ -65,6 +65,7 @@ long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
 	//char path[128];
 	//char dir[128];
 	//int i, ret, j;
+	int fd = -1;
 	switch(cmd) {
 		case RD_CREATE:
 			printk("Ramdisk ioctl create.\n");
@@ -101,7 +102,18 @@ long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
 			return 0;
 		case RD_OPEN:
 			// printk("Ramdisk ioctl open.\n");
-			 ramfs_open("/c/jty.txt", RD_RDWR);
+			 // fd = ramfs_open("/c/jty.txt", RD_RDWR);
+			 // show_blocks_status();
+			 // show_inodes_status();
+			 // show_dir_status("/");
+			 // show_dir_status("/a");
+			 // show_dir_status("/a/b/");
+			 // show_dir_status("/c");
+			 // show_fdt_status();
+			return 0;
+		case RD_CLOSE:
+			printk("Ramdisk ioctl close.\n");
+			 fd = ramfs_open("/c/jty.txt", RD_RDWR);
 			 show_blocks_status();
 			 show_inodes_status();
 			 show_dir_status("/");
@@ -109,9 +121,8 @@ long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
 			 show_dir_status("/a/b/");
 			 show_dir_status("/c");
 			 show_fdt_status();
-			return 0;
-		case RD_CLOSE:
-			printk("Ramdisk ioctl close.\n");
+			ramfs_close(fd);
+			show_fdt_status();
 			return 0;
 		case RD_READ:
 			printk("Ramdisk ioctl read.\n");
