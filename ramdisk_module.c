@@ -65,8 +65,32 @@ long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
 	switch(cmd) {
 		case RD_CREATE:
 			printk("Ramdisk ioctl create.\n");
+			/* test creating a normal file */;
+			ramfs_create("/jty.txt");
+			/* test creating a existing file */
+			ramfs_create("/jty.txt");
+			/* test creating a file whose parent doesn't exist */
+			ramfs_create("/a/b");
+			/* test creating a file whose path is not valid */
+			ramfs_create("/a.txt/");
+			/* test creating a file under a dir other than root */
+			ramfs_mkdir("/c");
+			ramfs_create("/c/jty.txt");
 			return 0;
 		case RD_MKDIR:
+			/* test make a normal dir */
+			ramfs_mkdir("/a");
+			/* test make a dir under a dir other than root */
+			ramfs_mkdir("/a/b/");
+			show_blocks_status();
+			show_inodes_status();
+			show_dir_status("/");
+			show_dir_status("/a");
+			show_dir_status("/a/");
+			show_dir_status("/a/b");
+			show_dir_status("/a/b/");
+			show_dir_status("/c");
+			// show_dir_status("/a/b");
 			printk("Ramdisk ioctl mkdir.\n");
 			return 0;
 		case RD_OPEN:

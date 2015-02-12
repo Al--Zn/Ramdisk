@@ -29,15 +29,6 @@ int ramfs_init(void) {
 	inodes_init();
 	bitmap_init();
 	data_init();
-	allocate_block();
-	allocate_block();
-	show_blocks_status();
-	show_inodes_status();
-	show_dir_status("/");
-	ramfs_create("/a.txt");
-	show_blocks_status();
-	show_inodes_status();	
-	show_dir_status("/");
 	return 0;
 }
 
@@ -159,7 +150,7 @@ char* allocate_block() {
 	block_num = i * 8 + j;
 	block_addr = first_data_block + block_num * RD_BLOCK_SIZE;
 	superblock->freeblock_count--;
-	printk("Block %d allocated, Addr: %p, Remaining: %d.\n", block_num, block_addr, superblock->freeblock_count);
+	// printk("Block %d allocated, Addr: %p, Remaining: %d.\n", block_num, block_addr, superblock->freeblock_count);
 
 	return block_addr;
 
@@ -178,11 +169,12 @@ void free_block(char *block) {
 }
 
 /*
- * Parse the given ABSOLUTE file path, get the file's upper dir's inode,
- * and the filename. If the path is not valid, the 
- * function returns -1, otherwise 0.
+ * Parse the given ABSOLUTE file path
+ * If the file exists, get its inode, its parent's inode and its filename, return 1
+ * If not, get its parent's inode and its filename, return 0
+ * If the path is not valid ,return -1
  */
-int parse_path(const char *path, rd_inode **parent_inode, char *filename) {
+int parse_path(const char *path, int type, rd_inode **parent_inode, rd_inode **file_inode, char *filename) {
 	char* tmp;
 	char* next_dir;
 	char* block;
@@ -195,6 +187,19 @@ int parse_path(const char *path, rd_inode **parent_inode, char *filename) {
 	int i, j;
 	int dir_num;
 
+
+	*parent_inode = NULL;
+	*file_inode = NULL;
+
+	/* if the path doesn't start with '/', invalid path*/
+	if (path[0] != '/') {
+		return -1;
+	}
+
+	/* if the path is a file path but ends with '/', invalid path */
+	if (type == RD_FILE && path[strlen(path)-1] == '/') {
+		return -1;
+	}
 	tmp = (char *)vmalloc(strlen(path));
 	strcpy(tmp, path);
 
@@ -203,9 +208,7 @@ int parse_path(const char *path, rd_inode **parent_inode, char *filename) {
 	par_inode = cur_inode;
 	next_dir = strsep(&tmp, "/");
 	next_dir = strsep(&tmp, "/");
-	while (next_dir != NULL) {
-		
-		
+	while (next_dir != NULL && strlen(next_dir) != 0) {
 		if (cur_inode->file_type != RD_DIRECTORY) return -1;
 
 		// Current file is a directory
@@ -216,8 +219,9 @@ int parse_path(const char *path, rd_inode **parent_inode, char *filename) {
 			block = cur_inode->block_addr[i];
 			
 			dir_num = RD_BLOCK_SIZE / sizeof(rd_dentry);
-			for (j = 0; j < dir_num; ++i) {
+			for (j = 0; j < dir_num; ++j) {
 				rd_dentry* dentry = (rd_dentry*) (block + j*sizeof(rd_dentry));
+
 				if (strcmp(dentry->filename, next_dir) == 0) {
 					par_inode = cur_inode;
 					cur_inode = inode_list + dentry->inode_num;
@@ -227,24 +231,28 @@ int parse_path(const char *path, rd_inode **parent_inode, char *filename) {
 
 				// ensure not visiting over the border
 				size_count += sizeof(rd_dentry);
-				if (size_count > cur_inode->file_size) break;
+				if (size_count >= cur_inode->file_size) break;
 			}
 			if (found) break;
-			if (size_count > cur_inode->file_size) break;
+			if (size_count >= cur_inode->file_size) break;
 		}
-
 		strcpy(filename, next_dir);
 		next_dir = strsep(&tmp, "/");
 
 		// A directory in the middle of the path not found
-		if (!found && next_dir != NULL) return -1;
+		if (!found && next_dir != NULL && strlen(next_dir) != 0) return -1;
     }
-
-    *parent_inode = par_inode;
-	
-	if (found) return 1;
-	else return 0;
+	if (found) {
+		*parent_inode = par_inode;
+		*file_inode = cur_inode;
+		return 1;
+	}
+	else  {
+		*parent_inode = cur_inode;
+		return 0;
+	}
 }
+
 
 /*
  * Add a file's dentry to its parent's dir file.
@@ -277,7 +285,6 @@ int add_dentry(rd_inode *parent_inode, int inode_num, char *filename) {
 	} else {
 		parent_last_block = parent_inode->block_addr[parent_block_count-1];
 	}
-	printk("add dentry: %p\n", parent_last_block + offset);
 	/* write the dentry */
 	dentry = (rd_dentry*)(parent_last_block + offset);
 	dentry->inode_num = inode_num;
@@ -301,13 +308,17 @@ int ramfs_create(const char *path) {
 
 	dentry = NULL;
 	filename = (char*)vmalloc(60);
-
-	if (parse_path(path, &parent_inode, filename) == -1) {
-		printk("Error: Invalid Path.\n");
+	ret = parse_path(path, RD_FILE, &parent_inode, &file_inode, filename);
+	if (ret == -1) {
+		printk("Error: Invalid Path '%s'.\n", path);
+		return -1;
+	} else if (ret == 1) {
+		printk("Error: File '%s' already exists.\n", path);
 		return -1;
 	}
 
-	/* Allocat a block for the file */
+
+	/* Allocate a block for the file */
 	file_block = allocate_block();
 	if (file_block == NULL) {
 		printk("Error: No free blocks available.\n");
@@ -336,8 +347,78 @@ int ramfs_create(const char *path) {
 		return -1;
 	}
 
+	printk("Successfully create '%s'.\n", path);
 	return 0;
 
+}
+
+int ramfs_mkdir(const char *path) {
+	rd_inode *parent_inode;
+	rd_inode *file_inode;
+	char *file_block;
+	char *filename;
+	rd_dentry *dentry;
+	int ret;
+
+	dentry = NULL;
+	filename = (char*)vmalloc(60);
+	ret = parse_path(path, RD_DIRECTORY, &parent_inode, &file_inode, filename);
+	if (ret == -1) {
+		printk("Error: Invalid Path '%s'.\n", path);
+		return -1;
+	} else if (ret == 1) {
+		printk("Error: File '%s' already exists.\n", path);
+		return -1;
+	}
+
+	/* Allocate a block for the file */
+	file_block = allocate_block();
+	if (file_block == NULL) {
+		printk("Error: No free blocks available.\n");
+		return -1;
+	}
+	/* Allocate a inode for the file */
+	file_inode = allocate_inode();
+
+	if (file_inode == NULL) {
+		printk("Error: No free inodes available.\n");
+		free_block(file_block);
+		return -1;
+	}
+
+	/* Init this inode */
+	file_inode->file_type = RD_DIRECTORY;
+	file_inode->block_count = 1;
+	file_inode->block_addr[0] = file_block;
+
+	/* Add a dentry to its parent */
+	ret = add_dentry(parent_inode, file_inode->inode_num, filename);
+	if (ret == -1) {
+		printk("Error: Cannot add dentry.\n");
+		free_inode(file_inode);
+		free_block(file_block);
+		return -1;
+	}
+
+	/* Add . .. dentry */
+	ret = add_dentry(file_inode, file_inode->inode_num, ".");
+	if (ret == -1) {
+		printk("Error: Cannot add dentry.\n");
+		free_inode(file_inode);
+		free_block(file_block);
+		return -1;		
+	}
+
+	ret = add_dentry(file_inode, parent_inode->inode_num, "..");
+	if (ret == -1) {
+		printk("Error: Cannot add dentry.\n");
+		free_inode(file_inode);
+		free_block(file_block);
+		return -1;		
+	}	
+
+	printk("Successfully mkdir '%s'.\n", path);
+	return 0;	
 }
 
 int show_blocks_status(void) {
@@ -398,14 +479,21 @@ int show_inodes_status(void) {
 
 int show_dir_status(const char *path) {
 	char *filename;
+	rd_inode *par_inode;
 	rd_inode *inode;
 	int ret, i, j, size_count, max_dentry_num;
 	rd_dentry *dentry;
 
 	filename = (char*)vmalloc(60);
-	ret = parse_path(path, &inode, filename);
+	ret = parse_path(path, RD_DIRECTORY, &par_inode, &inode, filename);
 	if (ret == -1) {
 		printk("Error: Cannot show the dir status. Invalid path.\n");
+		return -1;
+	} else if (ret == 0) {
+		printk("Error: Dir not exists.\n");
+		return -1;
+	} else if (par_inode->file_type != RD_DIRECTORY) {
+		printk("Error: Not a dir path.\n");
 		return -1;
 	}
 	printk("==================Directory Status==================\n");

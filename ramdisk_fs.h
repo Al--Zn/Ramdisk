@@ -102,7 +102,7 @@ void free_inode(rd_inode *inode);
 void free_block(char *block);
 
 /* Path Functions */
-int parse_path(const char *path, rd_inode **parent_inode, char *filename);
+int parse_path(const char *path, int type, rd_inode **parent_inode, rd_inode **file_inode, char *filename);
 
 /* Dentry Functions */
 int add_dentry(rd_inode *parent_inode, int inode_num, char *filename);
