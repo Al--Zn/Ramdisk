@@ -1,1 +1,0 @@
-cmd_/home/lx/Downloads/Ramdisk/ramdisk.ko := ld -r -m elf_x86_64 -T /usr/src/linux-headers-3.13.0-32-generic/scripts/module-common.lds --build-id  -o /home/lx/Downloads/Ramdisk/ramdisk.ko /home/lx/Downloads/Ramdisk/ramdisk.o /home/lx/Downloads/Ramdisk/ramdisk.mod.o
