@@ -99,6 +99,7 @@ typedef struct {
 #define RD_SHOWBLOCK        0xfa
 #define RD_SHOWINODE        0xfb
 #define RD_SHOWFDT          0xfc
+#define RD_EXIT             0xff
 
 /* File Definitions */
 #define RD_MAX_FILE         256

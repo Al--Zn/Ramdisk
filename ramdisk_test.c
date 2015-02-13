@@ -75,11 +75,100 @@ int parse_command(char *str, rd_param* param) {
 	int cmd;	// RD_CREATE, RD_MKDIR...
 	int mode;	// RD_RDONLY...
 	int fd;
+	int cnt;
+	char* buf;
 	char path[256] = {0};
+	int i, l;
 
+	fd = 0;
 	cmd = 0;
 	mode = 0;
-	// TODO: parse the string cmd
+	
+	for (cnt = 0, buf = strsep(&str, " "); buf != NULL; buf = strsep(&str, " ")) {
+		if (strlen(buf) == 0) continue; // eat extra spaces
+		switch (cnt) {
+		case 0: {
+			if (strcmp(buf, "create") == 0) {
+				cmd = RD_CREATE;
+			} else if (strcmp(buf, "mkdir") == 0) {
+				cmd = RD_MKDIR;
+			} else if (strcmp(buf, "open") == 0) {
+				cmd = RD_OPEN;
+			} else if (strcmp(buf, "close") == 0) {
+				cmd = RD_CLOSE;
+			} else if (strcmp(buf, "unlink") == 0) {
+				cmd = RD_UNLINK;
+			} else if (strcmp(buf, "showblocks") == 0) {
+				cmd = RD_SHOWBLOCKS;
+			} else if (strcmp(buf, "showinodes") == 0) {
+				cmd = RD_SHOWINODES;
+			} else if (strcmp(buf, "showdir") == 0) {
+				cmd = RD_SHOWDIR;
+			} else if (strcmp(buf, "showfdt") == 0) {
+				cmd = RD_SHOWFDT;
+			} else if (strcmp(buf, "exit") == 0 ){
+				cmd = RD_EXIT;
+			} else {
+				cmd = RD_EXIT;
+				return -1;
+			}
+			break;
+		}
+		case 1: {
+			switch (cmd) {
+			case RD_CREATE:
+			case RD_MKDIR:
+			case RD_OPEN:
+			case RD_UNLINK:
+			case RD_SHOWDIR:
+				if (strlen(buf) > 256) {
+					// too large
+					return -1;
+				}
+				strcpy(path, buf);
+				break;
+			case RD_CLOSE:
+				for (i = 0; l = strlen(buf); ++i) {
+					if ('0' <= buf[i] && buf[i] <= '9') {
+						fd = fd * 10 + (buf[i] - '0');
+					}
+					else {
+						// fd contains characters other than #
+						return -1;
+					}
+				}
+				break;
+			default:
+				// other cmds don't have a 2nd argument
+				return -1;
+			}
+			break;
+		}
+		case 2: {
+			if (cmd == RD_OPEN) {
+				if (strcmp(buf, "RD_RDONLY")) {
+					mode = RD_RDONLY;
+				} else if (strcmp(buf, "RD_WRONLY")) {
+					mode = RD_WRONLY;
+				} else if (strcmp(buf, "RD_RDWR")) {
+					mode = RD_RDWR;
+				} else {
+					// unsupported mode;
+					return -1;
+				}
+			} else {
+				// too many arguments for other commands
+				return -1;
+			}
+		}
+		default: {
+			// too many arguments
+			return -1;
+		}
+		}
+		++cnt;
+    }
+
 	strcpy(param->path, path);
 	param->mode = mode;
 	param->msg_addr = msg;
@@ -92,8 +181,18 @@ int parse_command(char *str, rd_param* param) {
  * keep reading the input from stdin and execute it
  */
 
-int input_command(char *str) {
+int input_command() {
 	// TODO: a loop to input command
+	char str[512];
+	rd_param* param;
+	while (fgets(str, sizeof(str), stdin) != NULL) {
+		if (parse_command(str, param) == -1) {
+			// error
+			break;
+		}
+		if (command == RD_EXIT) break;
+		execute_command(fd, command, param);
+	}
 	return 0;
 }
 
