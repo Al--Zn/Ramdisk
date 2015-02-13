@@ -5,7 +5,7 @@
 #include <linux/fs.h>
 #include <linux/slab.h>
 #include <linux/proc_fs.h>
-
+#include "ramdisk_param.h"
 #include "ramdisk_fs.h"
 
 MODULE_LICENSE("GPL");
@@ -65,65 +65,26 @@ long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
 	//char path[128];
 	//char dir[128];
 	//int i, ret, j;
-	int fd = -1;
+	rd_param param;
+	int fd, ret;
+	char *buf;
+	if (arg != 0)
+		copy_from_user(&param, (rd_param*)arg, sizeof(rd_param));
+	fd = -1;
 	switch(cmd) {
 		case RD_CREATE:
-			printk("Ramdisk ioctl create.\n");
-			/* test creating a normal file */;
-			ramfs_create("/jty.txt");
-			/* test creating a existing file */
-			ramfs_create("/jty.txt");
-			/* test creating a file whose parent doesn't exist */
-			ramfs_create("/a/b");
-			/* test creating a file whose path is not valid */
-			ramfs_create("/a.txt/");
-			/* test creating a file under a dir other than root */
-			ramfs_mkdir("/c");
-			ramfs_create("/c/jty.txt");
-			/* test tremendous file creation commands */
-			// for (j = 0; j < 10; ++j) {
-			// 	sprintf(dir, "/%d", j);
-			// 	ramfs_mkdir(dir);
-			// 	for (i = 0;;++i) {
-			// 		sprintf(path, "/%d/%d.txt", j, i);
-
-			// 		ret = ramfs_create(path);
-			// 		if (ret == -1)
-			// 			break;
-			// 	}
-			// }
-			return 0;
+			ret = ramfs_create(param.path);
+			return ret;
 		case RD_MKDIR:
-			/* test make a normal dir */
-			ramfs_mkdir("/a");
-			/* test make a dir under a dir other than root */
-			ramfs_mkdir("/a/b/");
-			//printk("Ramdisk ioctl mkdir.\n");
-			return 0;
+			ret = ramfs_mkdir(param.path);
+			return ret;
 		case RD_OPEN:
-			// printk("Ramdisk ioctl open.\n");
-			 // fd = ramfs_open("/c/jty.txt", RD_RDWR);
-			 // show_blocks_status();
-			 // show_inodes_status();
-			 // show_dir_status("/");
-			 // show_dir_status("/a");
-			 // show_dir_status("/a/b/");
-			 // show_dir_status("/c");
-			 // show_fdt_status();
-			return 0;
+			ret = ramfs_open(param.path, param.mode);
+			// copy_to_user(param.fd_addr, &fd, sizeof(int));
+			return ret;
 		case RD_CLOSE:
-			printk("Ramdisk ioctl close.\n");
-			 fd = ramfs_open("/c/jty.txt", RD_RDWR);
-			 show_blocks_status();
-			 show_inodes_status();
-			 show_dir_status("/");
-			 show_dir_status("/a");
-			 show_dir_status("/a/b/");
-			 show_dir_status("/c");
-			 show_fdt_status();
-			ramfs_close(fd);
-			show_fdt_status();
-			return 0;
+			ret = ramfs_close(param.fd);
+			return ret;
 		case RD_READ:
 			printk("Ramdisk ioctl read.\n");
 			return 0;
@@ -134,16 +95,41 @@ long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
 			printk("Ramdisk ioctl lseek.\n");
 			return 0;
 		case RD_UNLINK:
-			printk("Ramdisk ioctl unlink.\n");
-			ramfs_unlink("/jty.txt");
-			show_blocks_status();
-			show_inodes_status();
-			show_dir_status("/");
-			ramfs_create("/haha.txt");
-			show_blocks_status();
-			show_inodes_status();
-			show_dir_status("/");
+			ret = ramfs_unlink(param.path);
+			return ret;
+		case RD_SHOWDIR:
+			buf = (char*)vmalloc(1024);
+			memset(buf, 0, 1024);
+			if (param.path != NULL && strlen(param.path) != 0)
+				show_dir_status(param.path, buf);
+			else {
+				printk("Error: path is empty.\n");
+				return -1;
+			}
+			copy_to_user(param.msg_addr, buf, strlen(buf) + 1);
+			vfree(buf);
 			return 0;
+		case RD_SHOWBLOCK:
+			buf = (char*)vmalloc(1024);
+			memset(buf, 0, 1024);
+			show_blocks_status(buf);
+			copy_to_user(param.msg_addr, buf, strlen(buf) + 1);
+			vfree(buf);
+			return 0;
+		case RD_SHOWINODE:
+			buf = (char*)vmalloc(1024);
+			memset(buf, 0, 1024);
+			show_inodes_status(buf);
+			copy_to_user(param.msg_addr, buf, strlen(buf) + 1);
+			vfree(buf);
+			return 0;
+		case RD_SHOWFDT:
+			buf = (char*)vmalloc(1024);
+			memset(buf, 0, 1024);
+			show_fdt_status(buf);
+			copy_to_user(param.msg_addr, buf, strlen(buf) + 1);
+			vfree(buf);
+			return 0;			
 		default:
 			/* Control should never reach here =w= */
 			printk("Ramdisk ioctl error.\n");

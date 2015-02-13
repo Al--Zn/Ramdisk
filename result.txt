@@ -1,0 +1,47 @@
+Test 1: Open the ramdisk......Succeeded.
+Test 2: Create Command......Failed.
+Test 3: Mkdir Command......Failed.
+Test 4: Open Command......Passed.
+[1m[33m====================Block Status====================
+Available free blocks: 3962. Total: 3965
+
+BlkNum	BlkAddr
+0	ffffc9000dc2e600
+1	ffffc9000dc2e800
+2	ffffc9000dc2ea00
+====================================================
+====================Inode Status====================
+Available free inodes: 543, Total: 546
+
+InodeNum	Type	BlkCnt	Size	BlkAddr
+0	dir	1	248	ffffc9000dc2e600
+1	file	1	0	ffffc9000dc2e800
+2	dir	1	124	ffffc9000dc2ea00
+====================================================
+=====================FDT Status=====================
+Fd	InodeNum	Offset	Block
+0	1		0	ffffc9000dc2e800
+====================================================
+
+[0mTest 5: Close Command......Passed.
+[1m[33m/jty.txt====================Block Status====================
+Available free blocks: 3962. Total: 3965
+
+BlkNum	BlkAddr
+0	ffffc9000dc2e600
+1	ffffc9000dc2e800
+2	ffffc9000dc2ea00
+====================================================
+====================Inode Status====================
+Available free inodes: 543, Total: 546
+
+InodeNum	Type	BlkCnt	Size	BlkAddr
+0	dir	1	248	ffffc9000dc2e600
+1	file	1	0	ffffc9000dc2e800
+2	dir	1	124	ffffc9000dc2ea00
+====================================================
+=====================FDT Status=====================
+Fd	InodeNum	Offset	Block
+====================================================
+
+[0m

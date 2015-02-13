@@ -1,4 +1,5 @@
 #include "ramdisk_fs.h"
+#include "ramdisk_defs.h"
 
 static rd_superblock *superblock;
 static rd_inode *inode_list;
@@ -608,32 +609,32 @@ int ramfs_close(int fd) {
 	return 0;
 }
 
-int show_blocks_status(void) {
+int show_blocks_status(char *buf) {
 	int i, j;
 	char byte;
-	printk("====================Block Status====================\n");
-	printk("Available free blocks: %d. Total: %d\n\n", superblock->freeblock_count, superblock->block_count);
-	printk("BlkNum\tBlkAddr\n");
+	sprintf(buf + strlen(buf), "======================Block Status======================\n");
+	sprintf(buf + strlen(buf), "Available free blocks: %d. Total: %d\n\n", superblock->freeblock_count, superblock->block_count);
+	sprintf(buf + strlen(buf), "BlkNum\tBlkAddr\n");
 	for (i = 0; i < RD_BLOCKBITMAP_SIZE; ++i) {
 		byte = *(first_bitmap_block + i);
 		for (j = 0; j < 8; ++j) {
 			if ((byte >> j) & 1) {
-				printk("%d\t%p\n", i * 8 + j, first_data_block + (i * 8 + j) * RD_BLOCK_SIZE);
+				sprintf(buf + strlen(buf), "%d\t%p\n", i * 8 + j, first_data_block + (i * 8 + j) * RD_BLOCK_SIZE);
 			}
 		}
 	}
-	printk("====================================================\n");
+	sprintf(buf + strlen(buf), "========================================================\n");
 	return 0;
 }
 
-int show_inodes_status(void) {
+int show_inodes_status(char *buf) {
 	int i, j;
 	char* dirtype;
 	char* filetype;
 	char *type;
-	printk("====================Inode Status====================\n");
-	printk("Available free inodes: %d, Total: %d\n\n", superblock->freeinode_count, superblock->inode_count);
-	printk("InodeNum\tType\tBlkCnt\tSize\tBlkAddr\n");
+	sprintf(buf + strlen(buf), "======================Inode Status======================\n");
+	sprintf(buf + strlen(buf), "Available free inodes: %d, Total: %d\n\n", superblock->freeinode_count, superblock->inode_count);
+	sprintf(buf + strlen(buf), "InodeNum\tType\tBlkCnt\tSize\tBlkAddr\n");
 
 
 
@@ -645,7 +646,7 @@ int show_inodes_status(void) {
 				type = filetype;
 			else
 				type = dirtype;
-			printk("%d\t%s\t%d\t%d\t", inode_list[i].inode_num, 
+			sprintf(buf + strlen(buf), "%d\t\t%s\t%d\t%d\t", inode_list[i].inode_num, 
 				                         type,
 				                         inode_list[i].block_count,
 				                         inode_list[i].file_size);
@@ -653,18 +654,18 @@ int show_inodes_status(void) {
 				if (inode_list[i].block_addr[j] == NULL)
 					break;
 				if (j != 0)
-					printk("\t\t\t\t\t");
-				printk("%p\n", inode_list[i].block_addr[j]);
+					sprintf(buf + strlen(buf), "\t\t\t\t\t");
+				sprintf(buf + strlen(buf), "%p\n", inode_list[i].block_addr[j]);
 			}
 		}
 
 	}
-	printk("====================================================\n");
+	sprintf(buf + strlen(buf), "========================================================\n");
 
 	return 0;
 }
 
-int show_dir_status(const char *path) {
+int show_dir_status(const char *path, char *buf) {
 	char *filename;
 	rd_inode *par_inode;
 	rd_inode *inode;
@@ -674,28 +675,28 @@ int show_dir_status(const char *path) {
 	filename = (char*)vmalloc(60);
 	ret = parse_path(path, RD_DIRECTORY, &par_inode, &inode, filename);
 	if (ret == -1) {
-		printk("Error: Cannot show the dir status. Invalid path.\n");
+		sprintf(buf + strlen(buf), "Error: Cannot show the dir status. Invalid path.\n");
 		return -1;
 	} else if (ret == 0) {
-		printk("Error: Dir not exists.\n");
+		sprintf(buf + strlen(buf), "Error: Dir not exists.\n");
 		return -1;
 	} else if (par_inode->file_type != RD_DIRECTORY) {
-		printk("Error: Not a dir path.\n");
+		sprintf(buf + strlen(buf), "Error: Not a dir path.\n");
 		return -1;
 	}
-	printk("==================Directory Status==================\n");
-	printk("Directory Path: %s\n\n", path);
-	printk("InodeNum\tFilename\n");
+	sprintf(buf + strlen(buf), "====================Directory Status====================\n");
+	sprintf(buf + strlen(buf), "Directory Path: %s\n\n", path);
+	sprintf(buf + strlen(buf), "InodeNum\tFilename\n");
 	size_count = 0;
 	max_dentry_num = RD_BLOCK_SIZE / sizeof(rd_dentry);
 	for (i = 0 ; i < inode->block_count; ++i) {
 		dentry = (rd_dentry*)inode->block_addr[i];
 		for (j = 0; j < max_dentry_num; ++j) {
 			if (dentry->inode_num != -1)
-				printk("%d\t%s\n", dentry->inode_num, dentry->filename);
+				sprintf(buf + strlen(buf), "%d\t\t%s\n", dentry->inode_num, dentry->filename);
 			size_count += sizeof(rd_dentry);
 			if (size_count >= inode->file_size) {
-				printk("====================================================\n");
+				sprintf(buf + strlen(buf), "========================================================\n");
 				return 0;
 			}
 			dentry++;
@@ -706,19 +707,19 @@ int show_dir_status(const char *path) {
 
 }
 
-int show_fdt_status(void) {
+int show_fdt_status(char *buf) {
 	int i;
 	rd_file *file;
 
 	file = NULL;
-	printk("=====================FDT Status=====================\n");
-	printk("Fd\tInodeNum\tOffset\tBlock\n");
+	sprintf(buf + strlen(buf), "=======================FDT Status=======================\n");
+	sprintf(buf + strlen(buf), "Fd\tInodeNum\tOffset\tBlock\n");
 	for (i = 0; i < RD_MAX_FILE; ++i) {
 		if (fd_list[i] == NULL)
 			continue;
 		file = fd_list[i];
-		printk("%d\t%d\t\t%d\t%p\n", i, file->inode->inode_num, file->cur_offset, file->cur_block);
+		sprintf(buf + strlen(buf), "%d\t%d\t\t%d\t%p\n", i, file->inode->inode_num, file->cur_offset, file->cur_block);
 	}
-	printk("====================================================\n");
+	sprintf(buf + strlen(buf), "========================================================\n");
 	return 0;
 }

@@ -95,6 +95,10 @@ typedef struct {
 #define RD_WRITE            0xf6
 #define RD_LSEEK            0xf7
 #define RD_UNLINK           0xf8
+#define RD_SHOWDIR          0xf9
+#define RD_SHOWBLOCK        0xfa
+#define RD_SHOWINODE        0xfb
+#define RD_SHOWFDT          0xfc
 
 /* File Definitions */
 #define RD_MAX_FILE         256
@@ -139,7 +143,7 @@ int ramfs_lseek(int fd, int offset);
 int ramfs_unlink(const char *path);
 
 /* Test Functions*/
-int show_blocks_status(void);
-int show_inodes_status(void);
-int show_dir_status(const char *path);
-int show_fdt_status(void);
+int show_blocks_status(char *buf);
+int show_inodes_status(char *buf);
+int show_dir_status(const char *path, char *buf);
+int show_fdt_status(char *buf);
