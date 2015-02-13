@@ -7,7 +7,6 @@
 
 int fd, retfd, ret;
 int command;
-void parse_command();
 rd_param param;
 
 char msg[1024] = {0};
@@ -53,6 +52,60 @@ void show_fdt_status() {
 	printf("\033[0m");	
 }
 
+/*
+ * Parse the command from user input
+ * 
+ * The parameters in the command are all collected in "rd_param* param"
+ *
+ * return 0 if the command is valid, -1 otherwise
+ *
+ * Input Example:
+ * 	create /a.txt	
+ * 	mkdir /b
+ * 	open /a.txt RD_RDONLY
+ * 	close 1
+ * 	unlink /a.txt
+ *  showblocks
+ *  showinodes
+ *  showdir /b
+ *  showfdt
+ * 	exit
+ */
+int parse_command(char *str, rd_param* param) {
+	int cmd;	// RD_CREATE, RD_MKDIR...
+	int mode;	// RD_RDONLY...
+	int fd;
+	char path[256] = {0};
+
+	cmd = 0;
+	mode = 0;
+	// TODO: parse the string cmd
+	strcpy(param->path, path);
+	param->mode = mode;
+	param->msg_addr = msg;
+	param->fd = fd;
+	return 0;
+}
+
+/*
+ * While the user doesn't give 'exit' command,
+ * keep reading the input from stdin and execute it
+ */
+
+int input_command(char *str) {
+	// TODO: a loop to input command
+	return 0;
+}
+
+/* 
+ * Execute the command
+ * Return 0 if success, otherwise -1
+ */
+
+int execute_command(int device_fd, int cmd, rd_param *param) {
+	return ioctl(device_fd, cmd, param);
+}
+
 int main(int argc, char **argv) {
 
 
@@ -78,6 +131,7 @@ int main(int argc, char **argv) {
 		printf("Failed.\n");
 	} else {
 		printf("Succeeded.\n");
+		printf("After create %s:\n", param.path);
 		show_blocks_status();
 		show_inodes_status();
 		show_dir_status("/");
@@ -90,6 +144,7 @@ int main(int argc, char **argv) {
 		printf("Failed.\n");
 	} else {
 		printf("Succeeded.\n");
+		printf("After mkdir %s:\n", param.path);
 		show_blocks_status();
 		show_inodes_status();
 		show_dir_status("/");
@@ -103,6 +158,7 @@ int main(int argc, char **argv) {
 		printf("Failed.\n");
 	} else {
 		printf("Succeeded.\n");
+		printf("After open %s:\n", param.path);
 		retfd = ret;
 		show_fdt_status();
 	}
@@ -114,6 +170,7 @@ int main(int argc, char **argv) {
 		printf("Failed.\n");
 	} else {
 		printf("Succeeded.\n");
+		printf("After close %d:\n", param.fd);
 		show_fdt_status();
 	}
 
@@ -148,6 +205,7 @@ int main(int argc, char **argv) {
 		printf("Failed.\n");
 	} else {
 	 	printf("Succeeded.\n");
+		printf("After unlink %s:\n", param.path);
 	 	show_blocks_status();
 	 	show_inodes_status();
 	 	show_dir_status("/");
