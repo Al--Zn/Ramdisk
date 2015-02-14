@@ -57,8 +57,7 @@ typedef struct {
     char path[RD_MAX_PATH_LEN];
     rd_inode *inode;
     rd_dentry *dentry;
-    char *cur_block;
-    int cur_offset;
+    int offset;
     int mode;
 } rd_file;
 

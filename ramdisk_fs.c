@@ -577,8 +577,7 @@ int ramfs_open(const char *path, int mode) {
 	strcpy(file->path, path);
 	file->inode = file_inode;
 	file->dentry = get_dentry(path);
-	file->cur_block = file_inode->block_addr[0];
-	file->cur_offset = 0;
+	file->offset = 0;
 	file->mode = mode;
 
 	printk("Successfully open '%s'.\n", path);
@@ -700,12 +699,12 @@ int show_fdt_status(char *buf) {
 
 	file = NULL;
 	sprintf(buf + strlen(buf), "=======================FDT Status=======================\n");
-	sprintf(buf + strlen(buf), "Fd\tInodeNum\tOffset\tBlock\n");
+	sprintf(buf + strlen(buf), "Fd\tInodeNum\tOffset\n");
 	for (i = 0; i < RD_MAX_FILE; ++i) {
 		if (fd_list[i] == NULL)
 			continue;
 		file = fd_list[i];
-		sprintf(buf + strlen(buf), "%d\t%d\t\t%d\t%p\n", i, file->inode->inode_num, file->cur_offset, file->cur_block);
+		sprintf(buf + strlen(buf), "%d\t%d\t\t%d\n", i, file->inode->inode_num, file->offset);
 	}
 	sprintf(buf + strlen(buf), "========================================================\n");
 	return 0;
