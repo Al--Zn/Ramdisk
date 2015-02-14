@@ -595,6 +595,134 @@ int ramfs_close(int fd) {
 	return 0;
 }
 
+int ramfs_read(int fd, char *buf, size_t count) {
+	rd_file *file;
+	rd_inode *inode;
+	char *byte;
+	int offset, blknum, blkoffset, i, read_cnt;
+
+	file = fd_list[fd];
+	/* check if the fd is valid */
+	if (file == NULL) {
+		printk("Error: Invalid fd '%d'.\n", fd);
+		return -1;
+	}
+	/* check if the file is write-only */
+	if (file->mode == RD_WRONLY) {
+		printk("Error: Write only file '%s'.\n", file->path);
+		return -1;
+	}
+	offset = file->offset;
+	/* check if the file reaches the max-file-size */
+	if (offset == RD_MAX_FILE_SIZE) {
+		printk("Warning: Max file size reached.\n");
+		return 0;
+	}
+	inode = file->inode;
+	blknum = offset / RD_BLOCK_SIZE;
+	blkoffset = offset % RD_BLOCK_SIZE;
+	byte = inode->block_addr[blknum] + blkoffset;
+	read_cnt = 0;
+
+	for (i = 0; i < count; ++i) {
+		*(buf++) = *(byte++);
+		read_cnt++;
+		offset++;
+		if (offset == inode->file_size) {
+			break;
+		}
+		if (offset % RD_BLOCK_SIZE == 0) {
+			/* go to the next block */
+			blknum++;
+			byte = inode->block_addr[blknum];
+		}
+	}
+	file->offset = offset;
+	return read_cnt;
+}
+
+int ramfs_write(int fd, char *buf, size_t count) {
+
+	rd_file *file;
+	rd_inode *inode;
+	char *byte;
+	int offset, blknum, blkoffset, i, write_cnt;
+
+	file = fd_list[fd];
+	/* check if the fd is valid */
+	if (file == NULL) {
+		printk("Error: Invalid fd '%d'.\n", fd);
+		return -1;
+	}
+	/* check if the file is read-only */
+	if (file->mode == RD_RDONLY) {
+		printk("Error: Read only file '%s'.\n", file->path);
+		return -1;
+	}
+	
+	offset = file->offset;
+	/* check if the file reaches the max-file-size */
+	if (offset == RD_MAX_FILE_SIZE) {
+		printk("Warning: Max file size reached.\n");
+		return 0;
+	}
+	inode = file->inode;
+	blknum = offset / RD_BLOCK_SIZE;
+	blkoffset = offset % RD_BLOCK_SIZE;
+	byte = inode->block_addr[blknum] + blkoffset;
+	write_cnt = 0;
+
+	for (i = 0; i < count; ++i) {
+		*(byte++) = *(buf++);
+		write_cnt++;
+		offset++;
+		if (offset % RD_BLOCK_SIZE == 0) {
+			/* go to the next block */
+			blknum++;
+			if (blknum == inode->block_count) {
+				/* check if max block reachd */
+				if (inode->block_count == RD_MAX_FILE_BLK) {
+					printk("Warning: Max file size reached.\n");
+					break;
+				}
+				/* allocate a new block to write */
+				byte = allocate_block();
+				if (byte == NULL) {
+					printk("Error: No free blocks available.\n");
+					break;
+				}
+				inode->block_addr[inode->block_count++] = byte;
+				
+			}
+			byte = inode->block_addr[blknum];
+		}
+	}
+
+	inode->file_size += write_cnt;
+	file->offset = offset;
+	return write_cnt;
+}
+
+int ramfs_lseek(int fd, int offset) {
+	rd_file *file;
+	rd_inode *inode;
+
+	file = fd_list[fd];
+	/* check if the fd is valid */
+	if (file == NULL) {
+		printk("Error: Invalid fd '%d'.\n", fd);
+		return -1;
+	}
+
+	inode = file->inode;
+	if (offset > inode->file_size) {
+		printk("Error: Offset '%d' larger than file size '%d'.\n", offset, inode->file_size);
+		return -1;
+	}
+	file->offset = offset;
+	return 0;
+}
+
 int show_blocks_status(char *buf) {
 	int i, j;
 	char byte;

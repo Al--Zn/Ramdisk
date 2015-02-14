@@ -39,6 +39,7 @@
 #define RD_MAX_FILE         256
 #define RD_MAX_FILE_BLK     10
 #define RD_MAX_FILENAME     60
+#define RD_MAX_FILE_SIZE    (RD_MAX_FILE_BLK * RD_BLOCK_SIZE)
 #define RD_RDONLY           0xe1
 #define RD_WRONLY           0xe2
 #define RD_RDWR             0xe3

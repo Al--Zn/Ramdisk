@@ -5,11 +5,83 @@
 #include "ramdisk_param.h"
 #include "ramdisk_defs.h"
 
-int fd, retfd, ret;
+int dev_fd, file_fd, ret;
 int command;
 rd_param param;
 
 char msg[1024] = {0};
+char data[RD_MAX_FILE_SIZE] = {0};
+
+/* wrapper functions */
+int rd_create(char *path) {
+	rd_param param;
+	int ret;
+	strcpy(param.path, path);
+	ret = ioctl(dev_fd, RD_CREATE, &param);
+	return ret;
+}
+
+int rd_mkdir(char *path) {
+	rd_param param;
+	int ret;
+	strcpy(param.path, path);
+	ret = ioctl(dev_fd, RD_MKDIR, &param);
+	return ret;
+}
+
+int rd_open(char *path, int mode) {
+	rd_param param;
+	int ret;
+	strcpy(param.path, path);
+	param.mode = mode;
+	ret = ioctl(dev_fd, RD_OPEN, &param);
+	return ret;
+}
+
+int rd_close(int fd) {
+	rd_param param;
+	int ret;
+	param.fd = fd;
+	ret = ioctl(dev_fd, RD_CLOSE, &param);
+	return ret;
+}
+
+int rd_write(int fd, char *buf, int len) {
+	rd_param param;
+	int ret;
+	param.fd = fd;
+	strcpy(param.data, buf);
+	param.len = len;
+	ret = ioctl(dev_fd, RD_WRITE, &param);
+	return ret;
+}
+
+int rd_read(int fd, char *buf, int len) {
+	rd_param param;
+	int ret;
+	param.fd = fd;
+	param.data_addr = buf;
+	param.len = len;
+	ret = ioctl(dev_fd, RD_READ, &param);
+	return ret;
+}
+
+int rd_lseek(int fd, int offset) {
+	rd_param param;
+	int ret;
+	param.fd = fd;
+	param.offset = offset;
+	ret = ioctl(dev_fd, RD_LSEEK, &param);
+	return ret;
+}
+
+int rd_unlink(char *path) {
+	rd_param param;
+	int ret;
+	strcpy(param.path, path);
+	ret = ioctl(dev_fd, RD_UNLINK, &param);
+	return ret;
+}
 
 void show_dir_status(char *path) {
 	param.msg_addr = msg;
@@ -19,7 +91,7 @@ void show_dir_status(char *path) {
 		memset(param.path, 0, sizeof(param.path));
 	else
 		strcpy(param.path, path);
-	ioctl(fd, RD_SHOWDIR, &param);
+	ioctl(dev_fd, RD_SHOWDIR, &param);
 	printf("%s\n", msg);
 	printf("\033[0m");		
 }
@@ -28,7 +100,7 @@ void show_blocks_status() {
 	param.msg_addr = msg;
 
 	printf("\033[1m\033[33m");
-	ioctl(fd, RD_SHOWBLOCKS, &param);
+	ioctl(dev_fd, RD_SHOWBLOCKS, &param);
 	printf("%s\n", msg);
 	printf("\033[0m");	
 }
@@ -37,7 +109,7 @@ void show_inodes_status() {
 	param.msg_addr = msg;
 
 	printf("\033[1m\033[33m");
-	ioctl(fd, RD_SHOWINODES, &param);
+	ioctl(dev_fd, RD_SHOWINODES, &param);
 	printf("%s\n", msg);
 	printf("\033[0m");	
 
@@ -47,7 +119,7 @@ void show_fdt_status() {
 	param.msg_addr = msg;
 
 	printf("\033[1m\033[33m");
-	ioctl(fd, RD_SHOWFDT, &param);
+	ioctl(dev_fd, RD_SHOWFDT, &param);
 	printf("%s\n", msg);
 	printf("\033[0m");	
 }
@@ -85,28 +157,37 @@ int parse_command(char *str, rd_param* param) {
 	mode = 0;
 	
 	for (cnt = 0, buf = strsep(&str, " "); buf != NULL; buf = strsep(&str, " ")) {
+		printf("buf: %s\n", buf);
 		if (strlen(buf) == 0) continue; // eat extra spaces
 		switch (cnt) {
 		case 0: {
 			if (strcmp(buf, "create") == 0) {
 				cmd = RD_CREATE;
+				printf("haha");
 			} else if (strcmp(buf, "mkdir") == 0) {
 				cmd = RD_MKDIR;
+				printf("hehe");
 			} else if (strcmp(buf, "open") == 0) {
 				cmd = RD_OPEN;
+				printf("abc");
 			} else if (strcmp(buf, "close") == 0) {
 				cmd = RD_CLOSE;
+				printf("cba");
 			} else if (strcmp(buf, "unlink") == 0) {
 				cmd = RD_UNLINK;
+				printf("asdf");
 			} else if (strcmp(buf, "showblocks") == 0) {
 				cmd = RD_SHOWBLOCKS;
+				printf("fuckyu");
 			} else if (strcmp(buf, "showinodes") == 0) {
 				cmd = RD_SHOWINODES;
+				printf("fuckyou");
 			} else if (strcmp(buf, "showdir") == 0) {
 				cmd = RD_SHOWDIR;
+				printf("fuckyouyou");
 			} else if (strcmp(buf, "showfdt") == 0) {
 				cmd = RD_SHOWFDT;
-			} else if (strcmp(buf, "exit") == 0 ){
+			} else if (strcmp(buf, "exit") == 0){
 				cmd = RD_EXIT;
 			} else {
 				cmd = RD_EXIT;
@@ -168,11 +249,11 @@ int parse_command(char *str, rd_param* param) {
 		}
 		++cnt;
     }
-
 	strcpy(param->path, path);
 	param->mode = mode;
 	param->msg_addr = msg;
 	param->fd = fd;
+	command = cmd;
 	return 0;
 }
 
@@ -184,14 +265,15 @@ int parse_command(char *str, rd_param* param) {
 int input_command() {
 	// TODO: a loop to input command
 	char str[512];
-	rd_param* param;
+	rd_param param;
+
 	while (fgets(str, sizeof(str), stdin) != NULL) {
-		if (parse_command(str, param) == -1) {
+		if (parse_command(str, &param) == -1) {
 			// error
 			break;
 		}
 		if (command == RD_EXIT) break;
-		execute_command(fd, command, param);
+		execute_command(dev_fd, command, &param);
 	}
 	return 0;
 }
@@ -202,7 +284,8 @@ int input_command() {
  */
 
 int execute_command(int device_fd, int cmd, rd_param *param) {
-	return ioctl(device_fd, cmd, param);
+	printf("Exec: %d\t%s\n", param->path);
+	return ioctl(dev_fd, cmd, param);
 }
 
 int main(int argc, char **argv) {
@@ -210,105 +293,17 @@ int main(int argc, char **argv) {
 
 	/* Test 1: Open the Ramdisk */
 	printf("Test 1: Open the ramdisk......");
-	fd = open(RAMDISK_PATH, O_RDONLY);
+	dev_fd = open(RAMDISK_PATH, O_RDONLY);
 
-	if (fd < 0) {
+	if (dev_fd < 0) {
 		printf("Failed.\n");
 		printf("Error: Ramdisk cannot be opened. Please make sure the module has already been installed\n");
 		return -1;
 	}
 	printf("Succeeded.\n");
 
+	input_command();
 
-	/* Test 2: Create Command */
-	printf("Test 2: Create Command......");
-
-	strcpy(param.path, "/jty.txt");
-	ret = ioctl(fd, RD_CREATE, &param);
-
-	if (ret < 0) {
-		printf("Failed.\n");
-	} else {
-		printf("Succeeded.\n");
-		printf("After create %s:\n", param.path);
-		show_blocks_status();
-		show_inodes_status();
-		show_dir_status("/");
-	}
-
-	printf("Test 3: Mkdir Command......");
-	strcpy(param.path, "/abc");
-	ret = ioctl(fd, RD_MKDIR, &param);
-	if (ret < 0) {
-		printf("Failed.\n");
-	} else {
-		printf("Succeeded.\n");
-		printf("After mkdir %s:\n", param.path);
-		show_blocks_status();
-		show_inodes_status();
-		show_dir_status("/");
-	}
-
-	printf("Test 4: Open Command......");
-	strcpy(param.path, "/jty.txt");
-	param.mode = RD_RDWR;
-	ret = ioctl(fd, RD_OPEN, &param);
-	if (ret < 0) {
-		printf("Failed.\n");
-	} else {
-		printf("Succeeded.\n");
-		printf("After open %s:\n", param.path);
-		retfd = ret;
-		show_fdt_status();
-	}
-
-	printf("Test 5: Close Command......");
-	param.fd = retfd;
-	ret = ioctl(fd, RD_CLOSE, &param);
-	if (ret < 0) {
-		printf("Failed.\n");
-	} else {
-		printf("Succeeded.\n");
-		printf("After close %d:\n", param.fd);
-		show_fdt_status();
-	}
-
-	// printf("Test 6: Read Command......");
-	// ret = ioctl(fd, RD_READ, 0);
-	// if (ret < 0) {
-	// 	printf("Failed.\n");
-	// } else {
-	// 	printf("Succeeded.\n");
-	// }
-
-	// printf("Test 7: Write Command......");
-	// ret = ioctl(fd, RD_WRITE, 0);
-	// if (ret < 0) {
-	// 	printf("Failed.\n");
-	// } else {
-	// 	printf("Succeeded.\n");
-	// }
-
-	// printf("Test 8: Lseek Command......");
-	// ret = ioctl(fd, RD_LSEEK, 0);
-	// if (ret < 0) {
-	// 	printf("Failed.\n");
-	// } else {
-	// 	printf("Succeeded.\n");
-	// }
-
-	printf("Test 9: Unlink Command......");
-	strcpy(param.path, "/jty.txt");
-	ret = ioctl(fd, RD_UNLINK, &param);
-	if (ret < 0) {
-		printf("Failed.\n");
-	} else {
-	 	printf("Succeeded.\n");
-		printf("After unlink %s:\n", param.path);
-	 	show_blocks_status();
-	 	show_inodes_status();
-	 	show_dir_status("/");
-	}
 
 
 

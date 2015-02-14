@@ -87,14 +87,19 @@ long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
 			ret = ramfs_close(param.fd);
 			return ret;
 		case RD_READ:
-			printk("Ramdisk ioctl read.\n");
-			return 0;
+			buf = (char*)vmalloc(param.len);
+			memset(buf, 0, param.len);
+			ret = ramfs_read(param.fd, buf, param.len);
+			printk("Read data: %s\n", buf);
+			if (ret != -1)
+				copy_to_user(param.data_addr, buf, param.len);
+			return ret;
 		case RD_WRITE:
-			printk("Ramdisk ioctl write.\n");
-			return 0;
+			ret = ramfs_write(param.fd, param.data, param.len);
+			return ret;
 		case RD_LSEEK:
-			printk("Ramdisk ioctl lseek.\n");
-			return 0;
+			ret = ramfs_lseek(param.fd, param.offset);
+			return ret;
 		case RD_UNLINK:
 			ret = ramfs_unlink(param.path);
 			return ret;
