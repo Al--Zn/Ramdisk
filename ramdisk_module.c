@@ -7,6 +7,7 @@
 #include <linux/proc_fs.h>
 #include "ramdisk_param.h"
 #include "ramdisk_fs.h"
+#include "ramdisk_defs.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("LX & JTY");
@@ -109,14 +110,14 @@ long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
 			copy_to_user(param.msg_addr, buf, strlen(buf) + 1);
 			vfree(buf);
 			return 0;
-		case RD_SHOWBLOCK:
+		case RD_SHOWBLOCKS:
 			buf = (char*)vmalloc(1024);
 			memset(buf, 0, 1024);
 			show_blocks_status(buf);
 			copy_to_user(param.msg_addr, buf, strlen(buf) + 1);
 			vfree(buf);
 			return 0;
-		case RD_SHOWINODE:
+		case RD_SHOWINODES:
 			buf = (char*)vmalloc(1024);
 			memset(buf, 0, 1024);
 			show_inodes_status(buf);

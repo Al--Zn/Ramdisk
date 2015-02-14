@@ -77,7 +77,7 @@ int parse_command(char *str, rd_param* param) {
 	int fd;
 	int cnt;
 	char* buf;
-	char path[256] = {0};
+	char path[RD_MAX_PATH_LEN] = {0};
 	int i, l;
 
 	fd = 0;
@@ -121,7 +121,7 @@ int parse_command(char *str, rd_param* param) {
 			case RD_OPEN:
 			case RD_UNLINK:
 			case RD_SHOWDIR:
-				if (strlen(buf) > 256) {
+				if (strlen(buf) > RD_MAX_PATH_LEN) {
 					// too large
 					return -1;
 				}

@@ -1,52 +1,15 @@
-[38858.764026] Ramdisk Exited.
-[38860.036536] Ramdisk Memory Allocated.
-[38860.036849] Ramdisk Inited.
-[38862.871272] Ramdisk Opened.
-[38862.871289] Create '/jty.txt'...
-[38862.871299] Successfully create '/jty.txt'.
-[38862.871307] Buf1: 
-[38862.871319] Buf: ======================Block Status======================
-[38862.871319] Available free blocks: 3963. Total: 3965
-[38862.871319] 
-[38862.871319] BlkNum	BlkAddr
-[38862.871319] 0	ffffc9000ee37600
-[38862.871319] 1	ffffc9000ee37800
-[38862.871319] ========================================================
-[38862.871319] 
-[38862.871356] Mkdir '/abc'...
-[38862.871359] Successfully mkdir '/abc'.
-[38862.871363] Buf1: 
-[38862.871373] Buf: ======================Block Status======================
-[38862.871373] Available free blocks: 3962. Total: 3965
-[38862.871373] 
-[38862.871373] BlkNum	BlkAddr
-[38862.871373] 0	ffffc9000ee37600
-[38862.871373] 1	ffffc9000ee37800
-[38862.871373] 2	ffffc9000ee37a00
-[38862.871373] ========================================================
-[38862.871373] 
-[38862.871405] Open '/jty.txt'...
-[38862.871409] Successfully open '/jty.txt'.
-[38862.871413] Buf1: 
-[38862.871423] Buf: ======================Block Status======================
-[38862.871423] Available free blocks: 3962. Total: 3965
-[38862.871423] 
-[38862.871423] BlkNum	BlkAddr
-[38862.871423] 0	ffffc9000ee37600
-[38862.871423] 1	ffffc9000ee37800
-[38862.871423] 2	ffffc9000ee37a00
-[38862.871423] ========================================================
-[38862.871423] 
-[38862.871448] Close 0.
-[38862.871449] Successfully close 0.
-[38862.871453] Buf1: /jty.txt
-[38862.871466] Buf: /jty.txt======================Block Status======================
-[38862.871466] Available free blocks: 3962. Total: 3965
-[38862.871466] 
-[38862.871466] BlkNum	BlkAddr
-[38862.871466] 0	ffffc9000ee37600
-[38862.871466] 1	ffffc9000ee37800
-[38862.871466] 2	ffffc9000ee37a00
-[38862.871466] ========================================================
-[38862.871466] 
-[38862.871531] Ramdisk Released.
+[64637.090666] Ramdisk Exited.
+[64690.676800] Ramdisk Memory Allocated.
+[64690.678964] Ramdisk Inited.
+[64695.380575] Ramdisk Opened.
+[64695.380593] Create '/jty.txt'...
+[64695.380600] Successfully create '/jty.txt'.
+[64695.380664] Mkdir '/abc'...
+[64695.380666] Successfully mkdir '/abc'.
+[64695.380712] Open '/jty.txt'...
+[64695.380717] Successfully open '/jty.txt'.
+[64695.380730] Close 0.
+[64695.380731] Successfully close 0.
+[64695.380745] Unlink '/jty.txt'...
+[64695.380748] Successfully unlink '/jty.txt'.
+[64695.380831] Ramdisk Released.

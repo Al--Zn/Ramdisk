@@ -55,9 +55,6 @@ int inodes_init(void) {
 		inode_list[i].block_count = 0;
 		inode_list[i].file_size = 0;
 		memset(inode_list[i].block_addr, 0, sizeof(inode_list[i].block_addr));
-		inode_list[i].first_level_index = NULL;
-		inode_list[i].second_level_index = NULL;
-		inode_list[i].third_level_index = NULL;
 	}
 
 	inode_list[0].file_type = RD_DIRECTORY;
@@ -78,18 +75,8 @@ int bitmap_init(void) {
 }
 
 int data_init(void) {
-	//rd_dentry *parent_dentry;	/* for ".." */
-	//rd_dentry *self_dentry;		/* for "." */
 
 	memset(first_data_block, 0, RD_DATA_BLOCKS_SIZE);
-	
-	// self_dentry = (rd_dentry*)first_data_block;
-	// self_dentry->inode_num = 0;
-	// strcpy(self_dentry->filename, ".");
-
-	// parent_dentry = self_dentry + 1;
-	// parent_dentry->inode_num = 0;
-	// strcpy(parent_dentry->filename, "..");
 
 	add_dentry(&inode_list[0], 0, ".");
 	add_dentry(&inode_list[0], 0, "..");
@@ -336,7 +323,7 @@ int add_dentry(rd_inode *parent_inode, int inode_num, char *filename) {
 	/* find the last block, if not enough block size remains, allocate a new block */
 	if (offset + sizeof(rd_dentry) > RD_BLOCK_SIZE) {
 		parent_inode->file_size += RD_BLOCK_SIZE - offset;
-		if (parent_block_count == 10) {
+		if (parent_block_count == RD_MAX_FILE_BLK) {
 			printk("Error: Failed to add dentry, max file size reached.\n");
 			return -1;
 		}
@@ -369,7 +356,7 @@ rd_dentry* get_dentry(const char *path) {
 	int ret, i, j, dir_num, size_count;
 
 
-	filename = (char*)vmalloc(60);
+	filename = (char*)vmalloc(RD_MAX_FILENAME);
 	ret = parse_path(path, RD_FILEORDIR, &par_inode, &file_inode, filename);
 	dir_num = RD_BLOCK_SIZE / sizeof(rd_dentry);
 	size_count = 0;
@@ -410,7 +397,7 @@ int ramfs_create(const char *path) {
 
 	printk("Create '%s'...\n", path);
 	dentry = NULL;
-	filename = (char*)vmalloc(60);
+	filename = (char*)vmalloc(RD_MAX_FILENAME);
 	ret = parse_path(path, RD_FILE, &parent_inode, &file_inode, filename);
 	if (ret == -1) {
 		printk("Error: Invalid Path '%s'.\n", path);
@@ -466,7 +453,7 @@ int ramfs_mkdir(const char *path) {
 
 	printk("Mkdir '%s'...\n", path);
 	dentry = NULL;
-	filename = (char*)vmalloc(60);
+	filename = (char*)vmalloc(RD_MAX_FILENAME);
 	ret = parse_path(path, RD_DIRECTORY, &parent_inode, &file_inode, filename);
 	if (ret == -1) {
 		printk("Error: Invalid Path '%s'.\n", path);
@@ -536,7 +523,7 @@ int ramfs_unlink(const char *path) {
 
 	printk("Unlink '%s'...\n", path);
 	dentry = NULL;
-	filename = (char*)vmalloc(60);
+	filename = (char*)vmalloc(RD_MAX_FILENAME);
 	ret = parse_path(path, RD_FILE, &parent_inode, &file_inode, filename);
 	if (ret == -1) {
 		printk("Error: Invalid path '%s'.\n", path);
@@ -566,7 +553,7 @@ int ramfs_open(const char *path, int mode) {
 	char *filename;
 
 	printk("Open '%s'...\n", path);
-	filename = (char *)vmalloc(60);
+	filename = (char *)vmalloc(RD_MAX_FILENAME);
 
 
 	ret = parse_path(path, RD_FILE, &par_inode, &file_inode, filename);
@@ -650,7 +637,7 @@ int show_inodes_status(char *buf) {
 				                         type,
 				                         inode_list[i].block_count,
 				                         inode_list[i].file_size);
-			for (j = 0; j < 10; ++j) {
+			for (j = 0; j < RD_MAX_FILE_BLK; ++j) {
 				if (inode_list[i].block_addr[j] == NULL)
 					break;
 				if (j != 0)
@@ -672,7 +659,7 @@ int show_dir_status(const char *path, char *buf) {
 	int ret, i, j, size_count, max_dentry_num;
 	rd_dentry *dentry;
 
-	filename = (char*)vmalloc(60);
+	filename = (char*)vmalloc(RD_MAX_FILENAME);
 	ret = parse_path(path, RD_DIRECTORY, &par_inode, &inode, filename);
 	if (ret == -1) {
 		sprintf(buf + strlen(buf), "Error: Cannot show the dir status. Invalid path.\n");

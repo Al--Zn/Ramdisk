@@ -24,6 +24,7 @@
 #include <asm/uaccess.h>
 #include <asm/string.h>
 #include <asm/unistd.h>
+#include "ramdisk_defs.h"
 
 /* Data structure of Superblock */
 typedef struct {
@@ -42,70 +43,24 @@ typedef struct {
     unsigned short file_type;   /* file type (RD_FILE or RD_DIRECTORY) */
     unsigned int block_count;   /* file size (number of blocks) */
     unsigned int file_size;     /* file size (byte) */
-    char* block_addr[10];       /* direct block index */
-    char* first_level_index;    /* 1st level index */
-    char* second_level_index;   /* 2nd level index */
-    char* third_level_index;    /* 3rd level index */
+    char* block_addr[RD_MAX_FILE_BLK];       /* direct block index */
 } rd_inode;
 
 /* Data structure of Dentry */
 typedef struct {
-    short inode_num;       /* inode number */
-    char filename[60]; /* file name */
+    short inode_num;                /* inode number */
+    char filename[RD_MAX_FILENAME];    /* file name */
 } rd_dentry;
 
 /* Data structure of File */
 typedef struct {
-    char path[128];
+    char path[RD_MAX_PATH_LEN];
     rd_inode *inode;
     rd_dentry *dentry;
     char *cur_block;
     int cur_offset;
     int mode;
 } rd_file;
-
-/* Size Definition*/
-#define RD_DISK_SIZE        (1024 * 1024 * 2)       /* The size of the ramdisk, default 2M */
-#define RD_BLOCK_SIZE       512                     /* The size of a data block, default 512 bytes */
-#define RD_SUPERBLOCK_SIZE  RD_BLOCK_SIZE           /* The size of superblock, default 1 block */
-#define RD_INODES_SIZE      (128 * RD_BLOCK_SIZE)   /* The size of inodes, default 128 block */
-#define RD_BLOCKBITMAP_SIZE (2 * RD_BLOCK_SIZE)     /* The size of blockbitmap, default 2 block */
-#define RD_DATA_BLOCKS_SIZE (RD_DISK_SIZE - RD_SUPERBLOCK_SIZE - RD_INODES_SIZE - RD_BLOCKBITMAP_SIZE)
-#define RD_INODE_NUM    (RD_INODES_SIZE / (sizeof(rd_inode)))
-#define RD_BLOCK_NUM    (RD_DATA_BLOCKS_SIZE / RD_BLOCK_SIZE)
-
-/* File Type Definition */
-#define RD_FILE             0xdead                  
-#define RD_DIRECTORY        0xbeef                  
-#define RD_AVAILABLE        0xabcd
-#define RD_FILEORDIR        0xdcba
-
-/* Block Status Definition */
-#define RD_FREE             0
-#define RD_ALLOCATED        1
-
-/* File Attributes Definition */
-
-/* ioctl commands */
-#define RD_CREATE           0xf1 
-#define RD_MKDIR            0xf2
-#define RD_OPEN             0xf3
-#define RD_CLOSE            0xf4
-#define RD_READ             0xf5
-#define RD_WRITE            0xf6
-#define RD_LSEEK            0xf7
-#define RD_UNLINK           0xf8
-#define RD_SHOWDIR          0xf9
-#define RD_SHOWBLOCK        0xfa
-#define RD_SHOWINODE        0xfb
-#define RD_SHOWFDT          0xfc
-#define RD_EXIT             0xff
-
-/* File Definitions */
-#define RD_MAX_FILE         256
-#define RD_RDONLY           0xe1
-#define RD_WRONLY           0xe2
-#define RD_RDWR             0xe3
 
 /* Init Functions */                                                                                                                
 int ramfs_init(void);
