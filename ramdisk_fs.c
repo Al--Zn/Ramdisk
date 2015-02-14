@@ -533,6 +533,12 @@ int ramfs_unlink(const char *path) {
 		return -1;
 	}
 
+	for (i = 0; i < RD_MAX_FILE; ++i) {
+		if (fd_list[i] != NULL && fd_list[i]->inode == file_inode) {
+			free_fd(i);
+		}
+	}
+	
 	dentry = get_dentry(path);
 	free_dentry(dentry);
 	for (i = 0; i < file_inode->block_count; ++i)
@@ -586,7 +592,12 @@ int ramfs_open(const char *path, int mode) {
 
 int ramfs_close(int fd) {
 	printk("Close %d.\n", fd);
-	if (fd < 0) {
+	if (fd < 0 || fd >= RD_MAX_FILE) {
+		printk("Error: Invalid fd %d.\n", fd);
+		return -1;
+	}
+
+	if (fd_list[fd] == NULL) {
 		printk("Error: Invalid fd %d.\n", fd);
 		return -1;
 	}
@@ -601,6 +612,11 @@ int ramfs_read(int fd, char *buf, size_t count) {
 	char *byte;
 	int offset, blknum, blkoffset, i, read_cnt;
 
+	if (fd < 0 || fd >= RD_MAX_FILE) {
+		printk("Error: Invalid fd %d.\n", fd);
+		return -1;
+	}
+
 	file = fd_list[fd];
 	/* check if the fd is valid */
 	if (file == NULL) {
@@ -613,12 +629,13 @@ int ramfs_read(int fd, char *buf, size_t count) {
 		return -1;
 	}
 	offset = file->offset;
+	inode = file->inode;
 	/* check if the file reaches the max-file-size */
-	if (offset == RD_MAX_FILE_SIZE) {
-		printk("Warning: Max file size reached.\n");
+	if (offset == inode->file_size) {
+		printk("Warning: File end reached.\n");
 		return 0;
 	}
-	inode = file->inode;
+
 	blknum = offset / RD_BLOCK_SIZE;
 	blkoffset = offset % RD_BLOCK_SIZE;
 	byte = inode->block_addr[blknum] + blkoffset;
@@ -647,7 +664,10 @@ int ramfs_write(int fd, char *buf, size_t count) {
 	rd_inode *inode;
 	char *byte;
 	int offset, blknum, blkoffset, i, write_cnt;
-
+	if (fd < 0 || fd >= RD_MAX_FILE) {
+		printk("Error: Invalid fd %d.\n", fd);
+		return -1;
+	}
 	file = fd_list[fd];
 	/* check if the fd is valid */
 	if (file == NULL) {
@@ -706,7 +726,10 @@ int ramfs_write(int fd, char *buf, size_t count) {
 int ramfs_lseek(int fd, int offset) {
 	rd_file *file;
 	rd_inode *inode;
-
+	if (fd < 0 || fd >= RD_MAX_FILE) {
+		printk("Error: Invalid fd %d.\n", fd);
+		return -1;
+	}
 	file = fd_list[fd];
 	/* check if the fd is valid */
 	if (file == NULL) {

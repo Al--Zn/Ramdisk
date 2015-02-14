@@ -135,6 +135,8 @@ long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
 			show_fdt_status(buf);
 			copy_to_user(param.msg_addr, buf, strlen(buf) + 1);
 			vfree(buf);
+			return 0;
+		case RD_HELP:
 			return 0;			
 		default:
 			/* Control should never reach here =w= */

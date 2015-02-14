@@ -33,6 +33,7 @@
 #define RD_SHOWBLOCKS       0xfa
 #define RD_SHOWINODES       0xfb
 #define RD_SHOWFDT          0xfc
+#define RD_HELP             0xfd
 #define RD_EXIT             0xff
 
 /* File Definitions */

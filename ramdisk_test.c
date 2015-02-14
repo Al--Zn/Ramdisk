@@ -6,32 +6,25 @@
 #include "ramdisk_defs.h"
 
 int dev_fd, file_fd, ret;
-int command;
+int cmd;
 rd_param param;
 
 char msg[1024] = {0};
 char data[RD_MAX_FILE_SIZE] = {0};
-
 /* wrapper functions */
 int rd_create(char *path) {
-	rd_param param;
-	int ret;
 	strcpy(param.path, path);
 	ret = ioctl(dev_fd, RD_CREATE, &param);
 	return ret;
 }
 
 int rd_mkdir(char *path) {
-	rd_param param;
-	int ret;
 	strcpy(param.path, path);
 	ret = ioctl(dev_fd, RD_MKDIR, &param);
 	return ret;
 }
 
 int rd_open(char *path, int mode) {
-	rd_param param;
-	int ret;
 	strcpy(param.path, path);
 	param.mode = mode;
 	ret = ioctl(dev_fd, RD_OPEN, &param);
@@ -39,16 +32,12 @@ int rd_open(char *path, int mode) {
 }
 
 int rd_close(int fd) {
-	rd_param param;
-	int ret;
 	param.fd = fd;
 	ret = ioctl(dev_fd, RD_CLOSE, &param);
 	return ret;
 }
 
 int rd_write(int fd, char *buf, int len) {
-	rd_param param;
-	int ret;
 	param.fd = fd;
 	strcpy(param.data, buf);
 	param.len = len;
@@ -57,8 +46,6 @@ int rd_write(int fd, char *buf, int len) {
 }
 
 int rd_read(int fd, char *buf, int len) {
-	rd_param param;
-	int ret;
 	param.fd = fd;
 	param.data_addr = buf;
 	param.len = len;
@@ -67,8 +54,6 @@ int rd_read(int fd, char *buf, int len) {
 }
 
 int rd_lseek(int fd, int offset) {
-	rd_param param;
-	int ret;
 	param.fd = fd;
 	param.offset = offset;
 	ret = ioctl(dev_fd, RD_LSEEK, &param);
@@ -76,8 +61,6 @@ int rd_lseek(int fd, int offset) {
 }
 
 int rd_unlink(char *path) {
-	rd_param param;
-	int ret;
 	strcpy(param.path, path);
 	ret = ioctl(dev_fd, RD_UNLINK, &param);
 	return ret;
@@ -137,56 +120,63 @@ void show_fdt_status() {
  * 	open /a.txt RD_RDONLY
  * 	close 1
  * 	unlink /a.txt
+ *  read 1 1024
+ *  write 1 abcdefg
+ *  lseek 1 0
  *  showblocks
  *  showinodes
  *  showdir /b
  *  showfdt
  * 	exit
  */
-int parse_command(char *str, rd_param* param) {
-	int cmd;	// RD_CREATE, RD_MKDIR...
+int parse_command(char *str) {
 	int mode;	// RD_RDONLY...
 	int fd;
 	int cnt;
+	int len;
+	int offset;
 	char* buf;
 	char path[RD_MAX_PATH_LEN] = {0};
+	char write_data[RD_MAX_FILE_SIZE] = {0};
 	int i, l;
 
-	fd = 0;
-	cmd = 0;
-	mode = 0;
-	
+	fd = -1;
+	cmd = -1;
+	mode = -1;
+	offset = -1;
+	len = -1;
 	for (cnt = 0, buf = strsep(&str, " "); buf != NULL; buf = strsep(&str, " ")) {
-		printf("buf: %s\n", buf);
+		if (buf[strlen(buf)-1] == '\n')
+			buf[strlen(buf)-1] = 0;
 		if (strlen(buf) == 0) continue; // eat extra spaces
 		switch (cnt) {
 		case 0: {
 			if (strcmp(buf, "create") == 0) {
 				cmd = RD_CREATE;
-				printf("haha");
 			} else if (strcmp(buf, "mkdir") == 0) {
 				cmd = RD_MKDIR;
-				printf("hehe");
 			} else if (strcmp(buf, "open") == 0) {
 				cmd = RD_OPEN;
-				printf("abc");
 			} else if (strcmp(buf, "close") == 0) {
 				cmd = RD_CLOSE;
-				printf("cba");
 			} else if (strcmp(buf, "unlink") == 0) {
 				cmd = RD_UNLINK;
-				printf("asdf");
+			} else if (strcmp(buf, "read") == 0) {
+				cmd = RD_READ;
+			} else if (strcmp(buf, "write") == 0) {
+				cmd = RD_WRITE;
+			} else if (strcmp(buf, "lseek") == 0) {
+				cmd = RD_LSEEK;
 			} else if (strcmp(buf, "showblocks") == 0) {
 				cmd = RD_SHOWBLOCKS;
-				printf("fuckyu");
 			} else if (strcmp(buf, "showinodes") == 0) {
 				cmd = RD_SHOWINODES;
-				printf("fuckyou");
 			} else if (strcmp(buf, "showdir") == 0) {
 				cmd = RD_SHOWDIR;
-				printf("fuckyouyou");
 			} else if (strcmp(buf, "showfdt") == 0) {
 				cmd = RD_SHOWFDT;
+			} else if (strcmp(buf, "help") == 0) {
+				cmd = RD_HELP;
 			} else if (strcmp(buf, "exit") == 0){
 				cmd = RD_EXIT;
 			} else {
@@ -208,8 +198,12 @@ int parse_command(char *str, rd_param* param) {
 				}
 				strcpy(path, buf);
 				break;
+			case RD_READ:
+			case RD_WRITE:
+			case RD_LSEEK:
 			case RD_CLOSE:
-				for (i = 0; l = strlen(buf); ++i) {
+				fd = 0;
+				for (i = 0, l = strlen(buf); i < l; ++i) {
 					if ('0' <= buf[i] && buf[i] <= '9') {
 						fd = fd * 10 + (buf[i] - '0');
 					}
@@ -227,33 +221,75 @@ int parse_command(char *str, rd_param* param) {
 		}
 		case 2: {
 			if (cmd == RD_OPEN) {
-				if (strcmp(buf, "RD_RDONLY")) {
+				if (strcmp(buf, "RD_RDONLY") == 0) {
 					mode = RD_RDONLY;
-				} else if (strcmp(buf, "RD_WRONLY")) {
+				} else if (strcmp(buf, "RD_WRONLY") == 0) {
 					mode = RD_WRONLY;
-				} else if (strcmp(buf, "RD_RDWR")) {
+				} else if (strcmp(buf, "RD_RDWR") == 0) {
 					mode = RD_RDWR;
 				} else {
 					// unsupported mode;
 					return -1;
 				}
-			} else {
-				// too many arguments for other commands
-				return -1;
+			} else if (cmd == RD_READ) {
+				len = 0;
+				for (i = 0, l = strlen(buf); i < l; ++i) {
+					if ('0' <= buf[i] && buf[i] <= '9') {
+						len = len * 10 + (buf[i] - '0');
+					}
+					else {
+						// len contains characters other than #
+						return -1;
+					}
+				}
+			} else if (cmd == RD_WRITE) {
+				strcpy(write_data, buf);
+				len = strlen(buf);
+			} else if (cmd == RD_LSEEK) {
+				offset = 0;
+				for (i = 0, l = strlen(buf); i < l; ++i) {
+					if ('0' <= buf[i] && buf[i] <= '9') {
+						offset = offset * 10 + (buf[i] - '0');
+					}
+					else {
+						// offset contains characters other than #
+						return -1;
+					}
+				}
 			}
+			break;
 		}
-		default: {
+		default: 
 			// too many arguments
 			return -1;
 		}
-		}
 		++cnt;
     }
-	strcpy(param->path, path);
-	param->mode = mode;
-	param->msg_addr = msg;
-	param->fd = fd;
-	command = cmd;
+    if (cmd == RD_CREATE || cmd == RD_MKDIR ||
+		cmd == RD_OPEN || cmd == RD_UNLINK ||
+		cmd == RD_SHOWDIR) {
+    	if (strlen(path) == 0)
+    		return -1;
+    }
+    if (cmd == RD_OPEN && mode == -1)
+    	return -1;
+    if ((cmd == RD_CLOSE || cmd == RD_READ || cmd == RD_WRITE)
+    	 && fd == -1)
+    	return -1;
+    if (cmd == RD_LSEEK && offset == -1)
+    	return -1;
+    if (cmd == RD_READ && len == -1)
+    	return -1;
+    if (cmd == RD_WRITE && strlen(write_data) == 0)
+    	return -1;
+	strcpy(param.path, path);
+	strcpy(param.data, write_data);
+	param.mode = mode;
+	param.fd = fd;
+	param.offset = offset;
+	param.len = len;
+	param.msg_addr = msg;
+	param.data_addr = data;
 	return 0;
 }
 
@@ -265,15 +301,18 @@ int parse_command(char *str, rd_param* param) {
 int input_command() {
 	// TODO: a loop to input command
 	char str[512];
-	rd_param param;
-
+	printf("\033[1m\033[33mPlease enter the command(enter 'help' to see the command list):\033[0m\n");
 	while (fgets(str, sizeof(str), stdin) != NULL) {
-		if (parse_command(str, &param) == -1) {
+		if (parse_command(str) == -1) {
 			// error
-			break;
+			printf("\033[1m\033[33mParse error, pls check ur command.\033[0m\n");
+			continue;
 		}
-		if (command == RD_EXIT) break;
-		execute_command(dev_fd, command, &param);
+		if (cmd == RD_EXIT) break;
+		ret = execute_command();
+		if (ret == -1) {
+			printf("\033[1m\033[33mSorry, ramdisk failed to execute ur command.\033[0m\n");
+		}
 	}
 	return 0;
 }
@@ -283,24 +322,54 @@ int input_command() {
  * Return 0 if success, otherwise -1
  */
 
-int execute_command(int device_fd, int cmd, rd_param *param) {
-	printf("Exec: %d\t%s\n", param->path);
-	return ioctl(dev_fd, cmd, param);
+int execute_command() {
+	ret = ioctl(dev_fd, cmd, &param);
+
+	switch(cmd) {
+		case RD_SHOWDIR:
+		case RD_SHOWFDT:
+		case RD_SHOWBLOCKS:
+		case RD_SHOWINODES:
+			printf("\033[1m\033[33m%s\033[0m\n", msg);
+			break;
+		case RD_OPEN:
+			printf("\033[1m\033[33mFd: %d\033[0m\n", ret);
+			break;
+		case RD_READ:
+			if (ret != -1)
+				printf("\033[1m\033[33mRead Data: %s\033[0m\n", data);
+			break;
+		case RD_HELP:
+			printf("\033[1m\033[33m");
+			printf("Command List:\n");
+			printf("create <ABSOLUTE PATH> (eg. create /a.txt)\n");
+			printf("mkdir <ABSOLUTE PATH> (eg. mkdir /b)\n");
+			printf("open <ABSOLUTE PATH> <RD_RDONLY|RD_WRONLY|RD_RDWR> (eg. open /a.txt RD_RDWR)\n");
+			printf("close <FD> (eg. close 1)\n");
+			printf("write <FD> <DATA> (eg. write 1 Hello,world)\n");
+			printf("lseek <FD> <OFFSET> (eg. lseek 1 0)\n");
+			printf("unlink <ABSOLUTE PATH> (eg. unlink /a.txt)\n");
+			printf("showdir <ABSOLUTE PATH> (eg. showdir /)\n");
+			printf("showblocks\n");
+			printf("showinodes\n");
+			printf("showfdt\n");
+			printf("\033[0m");
+			break;
+		default:
+			break;
+	}
+	return ret;
+
 }
 
 int main(int argc, char **argv) {
 
-
-	/* Test 1: Open the Ramdisk */
-	printf("Test 1: Open the ramdisk......");
 	dev_fd = open(RAMDISK_PATH, O_RDONLY);
 
 	if (dev_fd < 0) {
-		printf("Failed.\n");
 		printf("Error: Ramdisk cannot be opened. Please make sure the module has already been installed\n");
 		return -1;
 	}
-	printf("Succeeded.\n");
 
 	input_command();
 
