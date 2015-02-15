@@ -387,7 +387,7 @@ rd_dentry* get_dentry(const char *path) {
  * Create a file according to the given ABSOLUTE path
  * Eg: ramfs_create("/a.txt")
  */
-int ramfs_create(const char *path) {
+int ramfs_create(const char *path, char *msg) {
 	rd_inode *parent_inode;
 	rd_inode *file_inode;
 	char *file_block;
@@ -395,15 +395,14 @@ int ramfs_create(const char *path) {
 	rd_dentry *dentry;
 	int ret;
 
-	printk("Create '%s'...\n", path);
 	dentry = NULL;
 	filename = (char*)vmalloc(RD_MAX_FILENAME);
 	ret = parse_path(path, RD_FILE, &parent_inode, &file_inode, filename);
 	if (ret == -1) {
-		printk("Error: Invalid Path '%s'.\n", path);
+		sprintf(msg + strlen(msg), "Error: Invalid Path '%s'.\n", path);
 		return -1;
 	} else if (ret == 1) {
-		printk("Error: File '%s' already exists.\n", path);
+		sprintf(msg + strlen(msg), "Error: File '%s' already exists.\n", path);
 		return -1;
 	}
 
@@ -411,14 +410,14 @@ int ramfs_create(const char *path) {
 	/* Allocate a block for the file */
 	file_block = allocate_block();
 	if (file_block == NULL) {
-		printk("Error: No free blocks available.\n");
+		sprintf(msg + strlen(msg), "Error: No free blocks available.\n");
 		return -1;
 	}
 	/* Allocate a inode for the file */
 	file_inode = allocate_inode();
 
 	if (file_inode == NULL) {
-		printk("Error: No free inodes available.\n");
+		sprintf(msg + strlen(msg), "Error: No free inodes available.\n");
 		free_block(file_block);
 		return -1;
 	}
@@ -432,18 +431,18 @@ int ramfs_create(const char *path) {
 	/* Add a dentry to its parent */
 	ret = add_dentry(parent_inode, file_inode->inode_num, filename);
 	if (ret == -1) {
-		printk("Error: Cannot add dentry.\n");
+		sprintf(msg + strlen(msg), "Error: Cannot add dentry.\n");
 		free_inode(file_inode);
 		free_block(file_block);
 		return -1;
 	}
 
-	printk("Successfully create '%s'.\n", path);
+	sprintf(msg + strlen(msg), "Successfully create '%s'.\n", path);
 	return 0;
 
 }
 
-int ramfs_mkdir(const char *path) {
+int ramfs_mkdir(const char *path, char *msg) {
 	rd_inode *parent_inode;
 	rd_inode *file_inode;
 	char *file_block;
@@ -451,29 +450,28 @@ int ramfs_mkdir(const char *path) {
 	rd_dentry *dentry;
 	int ret;
 
-	printk("Mkdir '%s'...\n", path);
 	dentry = NULL;
 	filename = (char*)vmalloc(RD_MAX_FILENAME);
 	ret = parse_path(path, RD_DIRECTORY, &parent_inode, &file_inode, filename);
 	if (ret == -1) {
-		printk("Error: Invalid Path '%s'.\n", path);
+		sprintf(msg + strlen(msg), "Error: Invalid Path '%s'.\n", path);
 		return -1;
 	} else if (ret == 1) {
-		printk("Error: File '%s' already exists.\n", path);
+		sprintf(msg + strlen(msg), "Error: File '%s' already exists.\n", path);
 		return -1;
 	}
 
 	/* Allocate a block for the file */
 	file_block = allocate_block();
 	if (file_block == NULL) {
-		printk("Error: No free blocks available.\n");
+		sprintf(msg + strlen(msg), "Error: No free blocks available.\n");
 		return -1;
 	}
 	/* Allocate a inode for the file */
 	file_inode = allocate_inode();
 
 	if (file_inode == NULL) {
-		printk("Error: No free inodes available.\n");
+		sprintf(msg + strlen(msg), "Error: No free inodes available.\n");
 		free_block(file_block);
 		return -1;
 	}
@@ -487,7 +485,7 @@ int ramfs_mkdir(const char *path) {
 	/* Add a dentry to its parent */
 	ret = add_dentry(parent_inode, file_inode->inode_num, filename);
 	if (ret == -1) {
-		printk("Error: Cannot add dentry.\n");
+		sprintf(msg + strlen(msg), "Error: Cannot add dentry.\n");
 		free_inode(file_inode);
 		free_block(file_block);
 		return -1;
@@ -496,7 +494,7 @@ int ramfs_mkdir(const char *path) {
 	/* Add . .. dentry */
 	ret = add_dentry(file_inode, file_inode->inode_num, ".");
 	if (ret == -1) {
-		printk("Error: Cannot add dentry.\n");
+		sprintf(msg + strlen(msg), "Error: Cannot add dentry.\n");
 		free_inode(file_inode);
 		free_block(file_block);
 		return -1;		
@@ -504,78 +502,83 @@ int ramfs_mkdir(const char *path) {
 
 	ret = add_dentry(file_inode, parent_inode->inode_num, "..");
 	if (ret == -1) {
-		printk("Error: Cannot add dentry.\n");
+		sprintf(msg + strlen(msg), "Error: Cannot add dentry.\n");
 		free_inode(file_inode);
 		free_block(file_block);
 		return -1;		
 	}	
 
-	printk("Successfully mkdir '%s'.\n", path);
+	sprintf(msg + strlen(msg), "Successfully mkdir '%s'.\n", path);
 	return 0;	
 }
 
-int ramfs_unlink(const char *path) {
+int ramfs_unlink(const char *path, char *msg) {
 	rd_inode *parent_inode;
 	rd_inode *file_inode;
 	char *filename;
 	rd_dentry *dentry;
 	int ret, i;
 
-	printk("Unlink '%s'...\n", path);
 	dentry = NULL;
 	filename = (char*)vmalloc(RD_MAX_FILENAME);
 	ret = parse_path(path, RD_FILE, &parent_inode, &file_inode, filename);
 	if (ret == -1) {
-		printk("Error: Invalid path '%s'.\n", path);
+		sprintf(msg + strlen(msg), "Error: Invalid path '%s'.\n", path);
 		return -1;
 	} else if (ret == 0) {
-		printk("Error: File '%s' doesn't exist.\n", path);
+		sprintf(msg + strlen(msg), "Error: Path '%s' doesn't exist.\n", path);
+		return -1;
+	} else if (file_inode->file_type != RD_FILE) {
+		sprintf(msg + strlen(msg), "Error: Path '%s' is not a regular file.\n", path);
 		return -1;
 	}
+
 
 	for (i = 0; i < RD_MAX_FILE; ++i) {
 		if (fd_list[i] != NULL && fd_list[i]->inode == file_inode) {
 			free_fd(i);
 		}
 	}
-	
+
 	dentry = get_dentry(path);
 	free_dentry(dentry);
 	for (i = 0; i < file_inode->block_count; ++i)
 		free_block(file_inode->block_addr[i]);
 	free_inode(file_inode);
-	printk("Successfully unlink '%s'.\n", path);
+	sprintf(msg + strlen(msg), "Successfully unlink '%s'.\n", path);
 	return 0;
 }
 /* 
  * Open a file
  * Allocate a new fd for this file, then return the fd.
  */
-int ramfs_open(const char *path, int mode) {
+int ramfs_open(const char *path, int mode, char *msg) {
 	int ret, fd;
 	rd_inode *par_inode;
 	rd_inode *file_inode;
 	rd_file *file;
 	char *filename;
 
-	printk("Open '%s'...\n", path);
 	filename = (char *)vmalloc(RD_MAX_FILENAME);
 
 
 	ret = parse_path(path, RD_FILE, &par_inode, &file_inode, filename);
 
 	if (ret == -1) {
-		printk("Error: Invalid path '%s'.\n", path);
+		sprintf(msg + strlen(msg), "Error: Invalid path '%s'.\n", path);
 		return -1;
 	} else if (ret == 0) {
-		printk("Error: File '%s' doesn't exist.\n", path);
+		sprintf(msg + strlen(msg), "Error: Path '%s' doesn't exist.\n", path);
+		return -1;
+	} else if (file_inode->file_type != RD_FILE) {
+		sprintf(msg + strlen(msg), "Error: Path '%s' is not a regular file.\n", path);
 		return -1;
 	}
 	/* allocate a new fd */
 
 	fd = allocate_fd();
 	if (fd == -1) {
-		printk("Error: No free fd available.\n");
+		sprintf(msg + strlen(msg), "Error: No free fd available.\n");
 		return -1;
 	}
 
@@ -586,53 +589,52 @@ int ramfs_open(const char *path, int mode) {
 	file->offset = 0;
 	file->mode = mode;
 
-	printk("Successfully open '%s'.\n", path);
+	sprintf(msg + strlen(msg), "Successfully open '%s'.\n", path);
 	return fd;
 }
 
-int ramfs_close(int fd) {
-	printk("Close %d.\n", fd);
+int ramfs_close(int fd, char *msg) {
+	
 	if (fd < 0 || fd >= RD_MAX_FILE) {
-		printk("Error: Invalid fd %d.\n", fd);
+		sprintf(msg + strlen(msg), "Error: Invalid fd '%d'.\n", fd);
 		return -1;
 	}
 
 	if (fd_list[fd] == NULL) {
-		printk("Error: Invalid fd %d.\n", fd);
+		sprintf(msg + strlen(msg), "Error: Invalid fd '%d'.\n", fd);
 		return -1;
 	}
 	free_fd(fd);
-	printk("Successfully close %d.\n", fd);
+	sprintf(msg + strlen(msg), "Successfully close '%d'.\n", fd);
 	return 0;
 }
 
-int ramfs_read(int fd, char *buf, size_t count) {
+int ramfs_read(int fd, char *buf, size_t count, char *msg) {
 	rd_file *file;
 	rd_inode *inode;
 	char *byte;
 	int offset, blknum, blkoffset, i, read_cnt;
 
 	if (fd < 0 || fd >= RD_MAX_FILE) {
-		printk("Error: Invalid fd %d.\n", fd);
+		sprintf(msg + strlen(msg), "Error: Invalid fd %d.\n", fd);
 		return -1;
 	}
 
 	file = fd_list[fd];
 	/* check if the fd is valid */
 	if (file == NULL) {
-		printk("Error: Invalid fd '%d'.\n", fd);
+		sprintf(msg + strlen(msg), "Error: Invalid fd '%d'.\n", fd);
 		return -1;
 	}
 	/* check if the file is write-only */
 	if (file->mode == RD_WRONLY) {
-		printk("Error: Write only file '%s'.\n", file->path);
+		sprintf(msg + strlen(msg), "Error: Write only file '%s'.\n", file->path);
 		return -1;
 	}
 	offset = file->offset;
 	inode = file->inode;
 	/* check if the file reaches the max-file-size */
 	if (offset == inode->file_size) {
-		printk("Warning: File end reached.\n");
 		return 0;
 	}
 
@@ -655,35 +657,36 @@ int ramfs_read(int fd, char *buf, size_t count) {
 		}
 	}
 	file->offset = offset;
+	sprintf(msg + strlen(msg), "Successfully read '%d' bytes from fd '%d'.\n", read_cnt, fd);
 	return read_cnt;
 }
 
-int ramfs_write(int fd, char *buf, size_t count) {
+int ramfs_write(int fd, char *buf, size_t count, char *msg) {
 
 	rd_file *file;
 	rd_inode *inode;
 	char *byte;
 	int offset, blknum, blkoffset, i, write_cnt;
 	if (fd < 0 || fd >= RD_MAX_FILE) {
-		printk("Error: Invalid fd %d.\n", fd);
+		sprintf(msg + strlen(msg), "Error: Invalid fd %d.\n", fd);
 		return -1;
 	}
 	file = fd_list[fd];
 	/* check if the fd is valid */
 	if (file == NULL) {
-		printk("Error: Invalid fd '%d'.\n", fd);
+		sprintf(msg + strlen(msg), "Error: Invalid fd '%d'.\n", fd);
 		return -1;
 	}
 	/* check if the file is read-only */
 	if (file->mode == RD_RDONLY) {
-		printk("Error: Read only file '%s'.\n", file->path);
+		sprintf(msg + strlen(msg), "Error: Read only file '%s'.\n", file->path);
 		return -1;
 	}
 	
 	offset = file->offset;
 	/* check if the file reaches the max-file-size */
 	if (offset == RD_MAX_FILE_SIZE) {
-		printk("Warning: Max file size reached.\n");
+		sprintf(msg + strlen(msg), "Warning: Max file size reached.\n");
 		return 0;
 	}
 	inode = file->inode;
@@ -702,13 +705,12 @@ int ramfs_write(int fd, char *buf, size_t count) {
 			if (blknum == inode->block_count) {
 				/* check if max block reachd */
 				if (inode->block_count == RD_MAX_FILE_BLK) {
-					printk("Warning: Max file size reached.\n");
 					break;
 				}
 				/* allocate a new block to write */
 				byte = allocate_block();
 				if (byte == NULL) {
-					printk("Error: No free blocks available.\n");
+					sprintf(msg + strlen(msg), "Error: No free blocks available.\n");
 					break;
 				}
 				inode->block_addr[inode->block_count++] = byte;
@@ -720,58 +722,60 @@ int ramfs_write(int fd, char *buf, size_t count) {
 
 	inode->file_size += write_cnt;
 	file->offset = offset;
+	sprintf(msg + strlen(msg), "Successfully write '%d' bytes to fd '%d'.\n", write_cnt, fd);
 	return write_cnt;
 }
 
-int ramfs_lseek(int fd, int offset) {
+int ramfs_lseek(int fd, int offset, char *msg) {
 	rd_file *file;
 	rd_inode *inode;
 	if (fd < 0 || fd >= RD_MAX_FILE) {
-		printk("Error: Invalid fd %d.\n", fd);
+		sprintf(msg + strlen(msg), "Error: Invalid fd '%d'.\n", fd);
 		return -1;
 	}
 	file = fd_list[fd];
 	/* check if the fd is valid */
 	if (file == NULL) {
-		printk("Error: Invalid fd '%d'.\n", fd);
+		sprintf(msg + strlen(msg), "Error: Invalid fd '%d'.\n", fd);
 		return -1;
 	}
 
 	inode = file->inode;
 	if (offset > inode->file_size) {
-		printk("Error: Offset '%d' larger than file size '%d'.\n", offset, inode->file_size);
+		sprintf(msg + strlen(msg), "Error: Offset '%d' is larger than file size '%d'.\n", offset, inode->file_size);
 		return -1;
 	}
 	file->offset = offset;
+	sprintf(msg + strlen(msg), "Successfully lseek, current offset of fd '%d' is '%d'.\n", fd, offset);
 	return 0;
 }
 
-int show_blocks_status(char *buf) {
+int show_blocks_status(char *msg) {
 	int i, j;
 	char byte;
-	sprintf(buf + strlen(buf), "======================Block Status======================\n");
-	sprintf(buf + strlen(buf), "Available free blocks: %d. Total: %d\n\n", superblock->freeblock_count, superblock->block_count);
-	sprintf(buf + strlen(buf), "BlkNum\tBlkAddr\n");
+	sprintf(msg + strlen(msg), "======================Block Status======================\n");
+	sprintf(msg + strlen(msg), "Available free blocks: %d. Total: %d\n\n", superblock->freeblock_count, superblock->block_count);
+	sprintf(msg + strlen(msg), "BlkNum\tBlkAddr\n");
 	for (i = 0; i < RD_BLOCKBITMAP_SIZE; ++i) {
 		byte = *(first_bitmap_block + i);
 		for (j = 0; j < 8; ++j) {
 			if ((byte >> j) & 1) {
-				sprintf(buf + strlen(buf), "%d\t%p\n", i * 8 + j, first_data_block + (i * 8 + j) * RD_BLOCK_SIZE);
+				sprintf(msg + strlen(msg), "%d\t%p\n", i * 8 + j, first_data_block + (i * 8 + j) * RD_BLOCK_SIZE);
 			}
 		}
 	}
-	sprintf(buf + strlen(buf), "========================================================\n");
+	sprintf(msg + strlen(msg), "========================================================\n");
 	return 0;
 }
 
-int show_inodes_status(char *buf) {
+int show_inodes_status(char *msg) {
 	int i, j;
 	char* dirtype;
 	char* filetype;
 	char *type;
-	sprintf(buf + strlen(buf), "======================Inode Status======================\n");
-	sprintf(buf + strlen(buf), "Available free inodes: %d, Total: %d\n\n", superblock->freeinode_count, superblock->inode_count);
-	sprintf(buf + strlen(buf), "InodeNum\tType\tBlkCnt\tSize\tBlkAddr\n");
+	sprintf(msg + strlen(msg), "======================Inode Status======================\n");
+	sprintf(msg + strlen(msg), "Available free inodes: %d, Total: %d\n\n", superblock->freeinode_count, superblock->inode_count);
+	sprintf(msg + strlen(msg), "InodeNum\tType\tBlkCnt\tSize\tBlkAddr\n");
 
 
 
@@ -783,7 +787,7 @@ int show_inodes_status(char *buf) {
 				type = filetype;
 			else
 				type = dirtype;
-			sprintf(buf + strlen(buf), "%d\t\t%s\t%d\t%d\t", inode_list[i].inode_num, 
+			sprintf(msg + strlen(msg), "%d\t\t%s\t%d\t%d\t", inode_list[i].inode_num, 
 				                         type,
 				                         inode_list[i].block_count,
 				                         inode_list[i].file_size);
@@ -791,18 +795,18 @@ int show_inodes_status(char *buf) {
 				if (inode_list[i].block_addr[j] == NULL)
 					break;
 				if (j != 0)
-					sprintf(buf + strlen(buf), "\t\t\t\t\t");
-				sprintf(buf + strlen(buf), "%p\n", inode_list[i].block_addr[j]);
+					sprintf(msg + strlen(msg), "\t\t\t\t\t");
+				sprintf(msg + strlen(msg), "%p\n", inode_list[i].block_addr[j]);
 			}
 		}
 
 	}
-	sprintf(buf + strlen(buf), "========================================================\n");
+	sprintf(msg + strlen(msg), "========================================================\n");
 
 	return 0;
 }
 
-int show_dir_status(const char *path, char *buf) {
+int show_dir_status(const char *path, char *msg) {
 	char *filename;
 	rd_inode *par_inode;
 	rd_inode *inode;
@@ -812,28 +816,28 @@ int show_dir_status(const char *path, char *buf) {
 	filename = (char*)vmalloc(RD_MAX_FILENAME);
 	ret = parse_path(path, RD_DIRECTORY, &par_inode, &inode, filename);
 	if (ret == -1) {
-		sprintf(buf + strlen(buf), "Error: Cannot show the dir status. Invalid path.\n");
+		sprintf(msg + strlen(msg), "Error: Invalid path '%s'.\n", path);
 		return -1;
 	} else if (ret == 0) {
-		sprintf(buf + strlen(buf), "Error: Dir not exists.\n");
+		sprintf(msg + strlen(msg), "Error: Path '%s' doesn't exist.\n", path);
 		return -1;
 	} else if (par_inode->file_type != RD_DIRECTORY) {
-		sprintf(buf + strlen(buf), "Error: Not a dir path.\n");
+		sprintf(msg + strlen(msg), "Error: Path '%s' is not a dir path.\n", path);
 		return -1;
 	}
-	sprintf(buf + strlen(buf), "====================Directory Status====================\n");
-	sprintf(buf + strlen(buf), "Directory Path: %s\n\n", path);
-	sprintf(buf + strlen(buf), "InodeNum\tFilename\n");
+	sprintf(msg + strlen(msg), "====================Directory Status====================\n");
+	sprintf(msg + strlen(msg), "Directory Path: %s\n\n", path);
+	sprintf(msg + strlen(msg), "InodeNum\tFilename\n");
 	size_count = 0;
 	max_dentry_num = RD_BLOCK_SIZE / sizeof(rd_dentry);
 	for (i = 0 ; i < inode->block_count; ++i) {
 		dentry = (rd_dentry*)inode->block_addr[i];
 		for (j = 0; j < max_dentry_num; ++j) {
 			if (dentry->inode_num != -1)
-				sprintf(buf + strlen(buf), "%d\t\t%s\n", dentry->inode_num, dentry->filename);
+				sprintf(msg + strlen(msg), "%d\t\t%s\n", dentry->inode_num, dentry->filename);
 			size_count += sizeof(rd_dentry);
 			if (size_count >= inode->file_size) {
-				sprintf(buf + strlen(buf), "========================================================\n");
+				sprintf(msg + strlen(msg), "========================================================\n");
 				return 0;
 			}
 			dentry++;
@@ -844,19 +848,19 @@ int show_dir_status(const char *path, char *buf) {
 
 }
 
-int show_fdt_status(char *buf) {
+int show_fdt_status(char *msg) {
 	int i;
 	rd_file *file;
 
 	file = NULL;
-	sprintf(buf + strlen(buf), "=======================FDT Status=======================\n");
-	sprintf(buf + strlen(buf), "Fd\tInodeNum\tOffset\n");
+	sprintf(msg + strlen(msg), "=======================FDT Status=======================\n");
+	sprintf(msg + strlen(msg), "Fd\tInodeNum\tOffset\n");
 	for (i = 0; i < RD_MAX_FILE; ++i) {
 		if (fd_list[i] == NULL)
 			continue;
 		file = fd_list[i];
-		sprintf(buf + strlen(buf), "%d\t%d\t\t%d\n", i, file->inode->inode_num, file->offset);
+		sprintf(msg + strlen(msg), "%d\t%d\t\t%d\n", i, file->inode->inode_num, file->offset);
 	}
-	sprintf(buf + strlen(buf), "========================================================\n");
+	sprintf(msg + strlen(msg), "========================================================\n");
 	return 0;
 }

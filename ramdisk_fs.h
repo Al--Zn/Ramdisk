@@ -88,17 +88,17 @@ int add_dentry(rd_inode *parent_inode, int inode_num, char *filename);
 rd_dentry* get_dentry(const char *path);
 
 /* Ioctl Functions */
-int ramfs_create(const char *path);
-int ramfs_mkdir(const char *path);
-int ramfs_open(const char *path, int mode);
-int ramfs_close(int fd);
-int ramfs_read(int fd, char *buf, size_t count);
-int ramfs_write(int fd, char *buf, size_t count);
-int ramfs_lseek(int fd, int offset);
-int ramfs_unlink(const char *path);
+int ramfs_create(const char *path, char *msg);
+int ramfs_mkdir(const char *path, char *msg);
+int ramfs_open(const char *path, int mode, char *msg);
+int ramfs_close(int fd, char *msg);
+int ramfs_read(int fd, char *buf, size_t count, char *msg);
+int ramfs_write(int fd, char *buf, size_t count, char *msg);
+int ramfs_lseek(int fd, int offset, char *msg);
+int ramfs_unlink(const char *path, char *msg);
 
 /* Test Functions*/
-int show_blocks_status(char *buf);
-int show_inodes_status(char *buf);
-int show_dir_status(const char *path, char *buf);
-int show_fdt_status(char *buf);
+int show_blocks_status(char *msg);
+int show_inodes_status(char *msg);
+int show_dir_status(const char *path, char *msg);
+int show_fdt_status(char *msg);

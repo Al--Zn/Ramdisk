@@ -324,16 +324,17 @@ int input_command() {
 
 int execute_command() {
 	ret = ioctl(dev_fd, cmd, &param);
+	printf("\033[1m\033[33m%s\033[0m", msg);
 
 	switch(cmd) {
 		case RD_SHOWDIR:
 		case RD_SHOWFDT:
 		case RD_SHOWBLOCKS:
 		case RD_SHOWINODES:
-			printf("\033[1m\033[33m%s\033[0m\n", msg);
 			break;
 		case RD_OPEN:
-			printf("\033[1m\033[33mFd: %d\033[0m\n", ret);
+			if (ret != -1)
+				printf("\033[1m\033[33mFd: %d\033[0m\n", ret);
 			break;
 		case RD_READ:
 			if (ret != -1)

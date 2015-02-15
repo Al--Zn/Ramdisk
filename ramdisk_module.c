@@ -63,86 +63,70 @@ int ramdisk_release(struct inode *inode, struct file *file) {
 }
 
 long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
-	//char path[128];
-	//char dir[128];
-	//int i, ret, j;
+
 	rd_param param;
 	int fd, ret;
-	char *buf;
+	char *msg, *buf;
 	if (arg != 0)
 		copy_from_user(&param, (rd_param*)arg, sizeof(rd_param));
 	fd = -1;
+	ret = 0;
+	msg = (char*)vmalloc(1024);
+	memset(msg, 0, 1024);
 	switch(cmd) {
 		case RD_CREATE:
-			ret = ramfs_create(param.path);
-			return ret;
+			ret = ramfs_create(param.path, msg);
+			break;
 		case RD_MKDIR:
-			ret = ramfs_mkdir(param.path);
-			return ret;
+			ret = ramfs_mkdir(param.path, msg);
+			break;
 		case RD_OPEN:
-			ret = ramfs_open(param.path, param.mode);
+			ret = ramfs_open(param.path, param.mode, msg);
 			// copy_to_user(param.fd_addr, &fd, sizeof(int));
-			return ret;
+			break;
 		case RD_CLOSE:
-			ret = ramfs_close(param.fd);
-			return ret;
+			ret = ramfs_close(param.fd, msg);
+			break;
 		case RD_READ:
 			buf = (char*)vmalloc(param.len);
 			memset(buf, 0, param.len);
-			ret = ramfs_read(param.fd, buf, param.len);
-			printk("Read data: %s\n", buf);
+			ret = ramfs_read(param.fd, buf, param.len, msg);
 			if (ret != -1)
 				copy_to_user(param.data_addr, buf, param.len);
-			return ret;
+			vfree(buf);
+			break;
 		case RD_WRITE:
-			ret = ramfs_write(param.fd, param.data, param.len);
-			return ret;
+			ret = ramfs_write(param.fd, param.data, param.len, msg);
+			break;
 		case RD_LSEEK:
-			ret = ramfs_lseek(param.fd, param.offset);
-			return ret;
+			ret = ramfs_lseek(param.fd, param.offset, msg);
+			break;
 		case RD_UNLINK:
-			ret = ramfs_unlink(param.path);
-			return ret;
+			ret = ramfs_unlink(param.path, msg);
+			break;
 		case RD_SHOWDIR:
-			buf = (char*)vmalloc(1024);
-			memset(buf, 0, 1024);
-			if (param.path != NULL && strlen(param.path) != 0)
-				show_dir_status(param.path, buf);
-			else {
-				printk("Error: path is empty.\n");
-				return -1;
-			}
-			copy_to_user(param.msg_addr, buf, strlen(buf) + 1);
-			vfree(buf);
-			return 0;
+			show_dir_status(param.path, msg);
+			break;
 		case RD_SHOWBLOCKS:
-			buf = (char*)vmalloc(1024);
-			memset(buf, 0, 1024);
-			show_blocks_status(buf);
-			copy_to_user(param.msg_addr, buf, strlen(buf) + 1);
-			vfree(buf);
-			return 0;
+			show_blocks_status(msg);
+			break;
 		case RD_SHOWINODES:
-			buf = (char*)vmalloc(1024);
-			memset(buf, 0, 1024);
-			show_inodes_status(buf);
-			copy_to_user(param.msg_addr, buf, strlen(buf) + 1);
-			vfree(buf);
-			return 0;
+			show_inodes_status(msg);
+			break;
 		case RD_SHOWFDT:
-			buf = (char*)vmalloc(1024);
-			memset(buf, 0, 1024);
-			show_fdt_status(buf);
-			copy_to_user(param.msg_addr, buf, strlen(buf) + 1);
-			vfree(buf);
-			return 0;
+			show_fdt_status(msg);
+			break;
 		case RD_HELP:
-			return 0;			
+			break;
 		default:
 			/* Control should never reach here =w= */
 			printk("Ramdisk ioctl error.\n");
-			return -1;
+			ret = -1;
+			break;
 	}
+	copy_to_user(param.msg_addr, msg, strlen(msg) + 1);
+	vfree(msg);
+	return ret;
 }
 
 module_init(ramdisk_init);
