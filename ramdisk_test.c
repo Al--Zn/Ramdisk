@@ -140,6 +140,7 @@ int parse_command(char *str) {
 	char path[RD_MAX_PATH_LEN] = {0};
 	char write_data[RD_MAX_FILE_SIZE] = {0};
 	int i, l;
+	int write_flag = 0;
 
 	fd = -1;
 	cmd = -1;
@@ -199,8 +200,11 @@ int parse_command(char *str) {
 				}
 				strcpy(path, buf);
 				break;
-			case RD_READ:
 			case RD_WRITE:
+				strcpy(write_data, str);
+				len = strlen(str);
+				write_flag = 1;
+			case RD_READ:
 			case RD_LSEEK:
 			case RD_CLOSE:
 				fd = 0;
@@ -243,9 +247,6 @@ int parse_command(char *str) {
 						return -1;
 					}
 				}
-			} else if (cmd == RD_WRITE) {
-				strcpy(write_data, buf);
-				len = strlen(buf);
 			} else if (cmd == RD_LSEEK) {
 				offset = 0;
 				for (i = 0, l = strlen(buf); i < l; ++i) {
@@ -264,6 +265,7 @@ int parse_command(char *str) {
 			// too many arguments
 			return -1;
 		}
+		if (write_flag == 1) break;
 		++cnt;
     }
     if (cmd == RD_CREATE || cmd == RD_MKDIR ||
