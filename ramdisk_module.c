@@ -71,8 +71,8 @@ long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
 		copy_from_user(&param, (rd_param*)arg, sizeof(rd_param));
 	fd = -1;
 	ret = 0;
-	msg = (char*)vmalloc(1024);
-	memset(msg, 0, 1024);
+	msg = (char*)vmalloc(4096);
+	memset(msg, 0, 4096);
 	switch(cmd) {
 		case RD_CREATE:
 			ret = ramfs_create(param.path, msg);

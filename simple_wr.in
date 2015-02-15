@@ -1,0 +1,25 @@
+# create a file
+create /rdonly.txt
+# test open the file in read-only mode
+open /rdonly.txt RD_RDONLY
+# test write a invalid fd
+write -1 hello
+# test write a read-only file
+write 0 hello
+# create another file
+create /wr.txt
+# test open the file in rdwr mode
+open /wr.txt RD_RDWR
+# test write the file
+write 1 hello
+# test read from the end of the file
+read 1 1024
+# test lseek to the start of the file
+lseek 1 0
+# test read the str we've just written
+read 1 1024
+# test close an invalid fd
+close 2
+# test close these files
+close 0
+close 1

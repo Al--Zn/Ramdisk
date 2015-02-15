@@ -1,0 +1,16 @@
+Successfully create '/rdonly.txt'.
+Successfully open '/rdonly.txt'.
+Fd: 0
+Parse error, pls check ur command.
+Error: Read only file '/rdonly.txt'.
+Successfully create '/wr.txt'.
+Successfully open '/wr.txt'.
+Fd: 1
+Successfully write '5' bytes to fd '1'.
+Read Data: 
+Successfully lseek, current offset of fd '1' is '0'.
+Successfully read '5' bytes from fd '1'.
+Read Data: hello
+Error: Invalid fd '2'.
+Successfully close '0'.
+Successfully close '1'.

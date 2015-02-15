@@ -1,0 +1,6 @@
+Successfully create '/a.txt'.
+Error: File '/a.txt' already exists.
+Error: Invalid Path '/a.txt/'.
+Error: Invalid Path '/a/a.txt'.
+Successfully mkdir '/b'.
+Successfully create '/b/c.txt'.

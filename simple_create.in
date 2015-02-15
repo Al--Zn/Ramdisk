@@ -1,0 +1,6 @@
+create /a.txt
+create /a.txt
+create /a.txt/
+create /a/a.txt
+mkdir /b
+create /b/c.txt

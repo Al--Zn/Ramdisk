@@ -320,13 +320,14 @@ int add_dentry(rd_inode *parent_inode, int inode_num, char *filename) {
 			break;
 		size_count += RD_BLOCK_SIZE - (size_count % RD_BLOCK_SIZE);
 	}
+
 	/* find the last block, if not enough block size remains, allocate a new block */
+	if (parent_block_count == RD_MAX_FILE_BLK) {
+		printk("Error: Failed to add dentry, max file size reached.\n");
+		return -1;
+	}
 	if (offset + sizeof(rd_dentry) > RD_BLOCK_SIZE) {
 		parent_inode->file_size += RD_BLOCK_SIZE - offset;
-		if (parent_block_count == RD_MAX_FILE_BLK) {
-			printk("Error: Failed to add dentry, max file size reached.\n");
-			return -1;
-		}
 		parent_inode->block_addr[parent_block_count] = allocate_block();
 		parent_last_block = parent_inode->block_addr[parent_block_count];
 		if (parent_last_block == NULL) {
@@ -431,7 +432,7 @@ int ramfs_create(const char *path, char *msg) {
 	/* Add a dentry to its parent */
 	ret = add_dentry(parent_inode, file_inode->inode_num, filename);
 	if (ret == -1) {
-		sprintf(msg + strlen(msg), "Error: Cannot add dentry.\n");
+		sprintf(msg + strlen(msg), "Error: Parent dir's size reaches max-file-size.\n");
 		free_inode(file_inode);
 		free_block(file_block);
 		return -1;

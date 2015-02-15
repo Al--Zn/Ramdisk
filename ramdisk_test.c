@@ -8,8 +8,9 @@
 int dev_fd, file_fd, ret;
 int cmd;
 rd_param param;
+int file_test = 0;
 
-char msg[1024] = {0};
+char msg[4096] = {0};
 char data[RD_MAX_FILE_SIZE] = {0};
 /* wrapper functions */
 int rd_create(char *path) {
@@ -300,18 +301,26 @@ int parse_command(char *str) {
 
 int input_command() {
 	// TODO: a loop to input command
-	char str[512];
-	printf("\033[1m\033[33mPlease enter the command(enter 'help' to see the command list):\033[0m\n");
+	char str[4096];
+	if (!file_test)
+		printf("\033[1m\033[33mPlease enter the command(enter 'help' to see the command list):\033[0m\n");
 	while (fgets(str, sizeof(str), stdin) != NULL) {
+		/* ignore comments */
+		if (str[0] == '#')
+			continue;
 		if (parse_command(str) == -1) {
 			// error
-			printf("\033[1m\033[33mParse error, pls check ur command.\033[0m\n");
+			if (!file_test)
+				printf("\033[1m\033[33m");
+			printf("Parse error, pls check ur command.\n");
+			if (!file_test)
+				printf("\033[0m");
 			continue;
 		}
 		if (cmd == RD_EXIT) break;
 		ret = execute_command();
 		if (ret == -1) {
-			printf("\033[1m\033[33mSorry, ramdisk failed to execute ur command.\033[0m\n");
+			// printf("\033[1m\033[33mSorry, ramdisk failed to execute ur command.\033[0m\n");
 		}
 	}
 	return 0;
@@ -324,8 +333,11 @@ int input_command() {
 
 int execute_command() {
 	ret = ioctl(dev_fd, cmd, &param);
-	printf("\033[1m\033[33m%s\033[0m", msg);
-
+	if (!file_test)
+		printf("\033[1m\033[33m");
+	printf("%s", msg);
+	if (!file_test)
+		printf("\033[0m");
 	switch(cmd) {
 		case RD_SHOWDIR:
 		case RD_SHOWFDT:
@@ -333,15 +345,26 @@ int execute_command() {
 		case RD_SHOWINODES:
 			break;
 		case RD_OPEN:
-			if (ret != -1)
-				printf("\033[1m\033[33mFd: %d\033[0m\n", ret);
+			if (ret != -1) {
+				if (!file_test)
+					printf("\033[1m\033[33m");
+				printf("Fd: %d\n", ret);
+				if (!file_test)
+					printf("\033[0m");
+			}
 			break;
 		case RD_READ:
-			if (ret != -1)
-				printf("\033[1m\033[33mRead Data: %s\033[0m\n", data);
+			if (ret != -1) {
+				if (!file_test)
+					printf("\033[1m\033[33m");
+				printf("Read Data: %s\n", data);
+				if (!file_test)
+					printf("\033[0m");
+			}
 			break;
 		case RD_HELP:
-			printf("\033[1m\033[33m");
+			if (!file_test)
+				printf("\033[1m\033[33m");
 			printf("Command List:\n");
 			printf("create <ABSOLUTE PATH> (eg. create /a.txt)\n");
 			printf("mkdir <ABSOLUTE PATH> (eg. mkdir /b)\n");
@@ -354,7 +377,8 @@ int execute_command() {
 			printf("showblocks\n");
 			printf("showinodes\n");
 			printf("showfdt\n");
-			printf("\033[0m");
+			if (!file_test)
+				printf("\033[0m");
 			break;
 		default:
 			break;
@@ -364,6 +388,40 @@ int execute_command() {
 }
 
 int main(int argc, char **argv) {
+	FILE *in;
+	FILE *out;
+	if (argc == 4 && strcmp(argv[1], "-f") == 0) {
+		in = freopen(argv[2], "r", stdin);
+		if (in == NULL) {
+			printf("\033[1m\033[33mError: Cannot open the input file '%s'.\n\033[0m", argv[2]);
+			return -1;
+		}
+		out = freopen(argv[3], "w", stdout);
+		if (out == NULL) {
+			printf("\033[1m\033[33mError: Cannot open the output file '%s'.\n\033[0m", argv[3]);
+			return -1;
+		}
+		file_test = 1;
+	} else if (argc == 2) {
+		if (strcmp(argv[1], "-h") == 0) {
+			printf("\033[1m\033[33mUsage:\n");
+			printf("    ramdisk_test <OPTION> <INPUT> <OUTPUT>\n");
+			printf("OPTION:\n");
+			printf("    -c: cmd line mode, user input commands manually in terminal.\n");
+			printf("    -f: file mode. For this option, <INPUT> and <OUTPUT> has to "
+				   "be specified.\n");
+			printf("\033[0m");
+			return 0;
+		} else if (strcmp(argv[1], "-c") == 0) {
+			file_test = 0;
+		} else {
+			printf("\033[1m\033[33mInvalid Command. Use 'ramdisk_test -h' to see the options.\n\033[0m");
+			return -1;
+		}
+	} else {
+		printf("\033[1m\033[33mInvalid Command. Use 'ramdisk_test -h' to see the options.\n\033[0m");
+		return -1;
+	}
 
 	dev_fd = open(RAMDISK_PATH, O_RDONLY);
 
@@ -373,8 +431,5 @@ int main(int argc, char **argv) {
 	}
 
 	input_command();
-
-
-
 
 }
