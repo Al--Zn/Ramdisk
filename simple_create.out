@@ -4,3 +4,38 @@ Error: Invalid Path '/a.txt/'.
 Error: Invalid Path '/a/a.txt'.
 Successfully mkdir '/b'.
 Successfully create '/b/c.txt'.
+======================Block Status======================
+Available free blocks: 3961. Total: 3965
+
+BlkNum	BlkAddr
+0	ffffc90014b8d600
+1	ffffc90014b8d800
+2	ffffc90014b8da00
+3	ffffc90014b8dc00
+========================================================
+======================Inode Status======================
+Available free inodes: 678, Total: 682
+
+InodeNum	Type	BlkCnt	Size	BlkAddr
+0		dir	1	248	ffffc90014b8d600
+1		file	1	0	ffffc90014b8d800
+2		dir	1	186	ffffc90014b8da00
+3		file	1	0	ffffc90014b8dc00
+========================================================
+====================Directory Status====================
+Directory Path: /
+
+InodeNum	Filename
+0		.
+0		..
+1		a.txt
+2		b
+========================================================
+====================Directory Status====================
+Directory Path: /b
+
+InodeNum	Filename
+2		.
+0		..
+3		c.txt
+========================================================

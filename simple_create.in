@@ -1,6 +1,16 @@
+# create a file
 create /a.txt
+# create a file that already exists
 create /a.txt
+# create a file with an invalid path
 create /a.txt/
+# create a file with an invalid path
 create /a/a.txt
+# make a directory
 mkdir /b
+# create a file under the directory
 create /b/c.txt
+showblocks
+showinodes
+showdir /
+showdir /b

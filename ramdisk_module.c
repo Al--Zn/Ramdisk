@@ -42,12 +42,10 @@ static int __init ramdisk_init(void) {
 	proc_create("ramdisk", 0444, NULL, &ramdisk_fops);
 	ramfs_init();
 	printk("Ramdisk Inited.\n");
-	// TODO
 	return 0;
 }
 
 static void __exit ramdisk_exit(void) {
-	// TODO
 	remove_proc_entry("ramdisk", NULL);
 	printk("Ramdisk Exited.\n");
 	return;

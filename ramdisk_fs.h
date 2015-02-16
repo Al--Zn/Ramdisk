@@ -5,9 +5,9 @@
  * SuperBlock, Inodes, Bitmap, Freeblock.
  *
  * Disk Layout:
- * +------------+--------+-----------------------+-------------+
- * | Superblock | Inodes | Bitmap(Inode + Block) | Data Blocks |
- * +------------+--------+-----------------------+-------------+
+ * +------------+--------+--------+-------------+
+ * | Superblock | Inodes | Bitmap | Data Blocks |
+ * +------------+--------+--------+-------------+
  *
  */
 
@@ -48,8 +48,8 @@ typedef struct {
 
 /* Data structure of Dentry */
 typedef struct {
-    short inode_num;                /* inode number */
-    char filename[RD_MAX_FILENAME];    /* file name */
+    short inode_num;                    /* inode number */
+    char filename[RD_MAX_FILENAME];     /* file name */
 } rd_dentry;
 
 /* Data structure of File */
