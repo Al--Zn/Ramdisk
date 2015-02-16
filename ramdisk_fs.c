@@ -10,6 +10,9 @@ static char *first_data_block;		/* first block addr of data region */
 
 static rd_file **fd_list;
 
+/*
+ * Init the whole ramdisk, allocate memory and init all the 4 memory regions
+ */
 int ramfs_init(void) {
 
 	first_block = (char *)vmalloc(RD_DISK_SIZE);
@@ -36,6 +39,9 @@ int ramfs_init(void) {
 	return 0;
 }
 
+/*
+ * Init the superblock region
+ */
 int superblock_init(void) {
 	superblock->block_count = RD_BLOCK_NUM;
 	superblock->inode_count = RD_INODE_NUM;
@@ -47,6 +53,9 @@ int superblock_init(void) {
 	return 0;
 }
 
+/*
+ * Init the inodes region
+ */
 int inodes_init(void) {
 	int i;
 	for (i = 0; i < RD_INODE_NUM; ++i) {
@@ -65,6 +74,9 @@ int inodes_init(void) {
 	return 0;
 }
 
+/*
+ * Init the bitmap region
+ */
 int bitmap_init(void) {
 
 	memset(first_bitmap_block, 0, RD_BLOCKBITMAP_SIZE);
@@ -74,6 +86,9 @@ int bitmap_init(void) {
 	return 0;
 }
 
+/*
+ * Init the data region
+ */
 int data_init(void) {
 
 	memset(first_data_block, 0, RD_DATA_BLOCKS_SIZE);
@@ -84,6 +99,9 @@ int data_init(void) {
 	return 0;
 }
 
+/*
+ * Init the File Descriptor Table (FDT)
+ */
 int fdt_init(void) {
 	int i;
 	fd_list = (rd_file**)vmalloc(sizeof(rd_file*) * RD_MAX_FILE);
@@ -164,12 +182,13 @@ char* allocate_block() {
 	block_num = i * 8 + j;
 	block_addr = first_data_block + block_num * RD_BLOCK_SIZE;
 	superblock->freeblock_count--;
-	// printk("Block %d allocated, Addr: %p, Remaining: %d.\n", block_num, block_addr, superblock->freeblock_count);
-
 	return block_addr;
 
 }
 
+/*
+ * Free the given inode
+ */
 void free_inode(rd_inode *inode) {
 	
 	inode->file_type = RD_AVAILABLE;
@@ -179,11 +198,17 @@ void free_inode(rd_inode *inode) {
 	superblock->freeinode_count++;
 }
 
+/*
+ * Free the given fd
+ */
 void free_fd(int fd) {
 	vfree(fd_list[fd]);
 	fd_list[fd] = NULL;
 }
 
+/*
+ * Free the given block
+ */
 void free_block(char *block) {
 	int block_num;
 	int i, j;
@@ -246,9 +271,6 @@ int parse_path(const char *path, int type, rd_inode **parent_inode, rd_inode **f
 
 		// Current file is a directory
 		for (i = 0, size_count = 0, found = false; i < cur_inode->block_count; ++i) {
-
-			// TODO: multi-level index
-
 			block = cur_inode->block_addr[i];
 			
 			dir_num = RD_BLOCK_SIZE / sizeof(rd_dentry);
@@ -289,7 +311,8 @@ int parse_path(const char *path, int type, rd_inode **parent_inode, rd_inode **f
 
 /*
  * Add a file's dentry to its parent's dir file.
- *
+ * First check if there is some dentry marked invalid in this dir file, if yes,
+ * use this dentry, otherwise allocate some space for a new dentry
  */
 int add_dentry(rd_inode *parent_inode, int inode_num, char *filename) {
 	int parent_file_size;
@@ -302,7 +325,7 @@ int add_dentry(rd_inode *parent_inode, int inode_num, char *filename) {
 	max_dentry_num = RD_BLOCK_SIZE / sizeof(rd_dentry);
 	offset = parent_file_size % RD_BLOCK_SIZE;
 	size_count = 0;
-	/* find if there are some invalid dentry(file unlinked) */
+	/* find if there are some invalid dentry(file deleted) */
 	for (i = 0; i < parent_inode->block_count; ++i) {
 		dentry = (rd_dentry*)parent_inode->block_addr[i];
 		for (j = 0; j < max_dentry_num; ++j) {
@@ -345,10 +368,12 @@ int add_dentry(rd_inode *parent_inode, int inode_num, char *filename) {
 	dentry->inode_num = inode_num;
 	strcpy(dentry->filename, filename);
 	parent_inode->file_size += sizeof(rd_dentry);
-	// TODO: 1st level index
 	return 0;
 }
 
+/*
+ * Get the dentry of the given path
+ */
 rd_dentry* get_dentry(const char *path) {
 	rd_dentry *dentry;
 	rd_inode *par_inode;
@@ -384,9 +409,9 @@ rd_dentry* get_dentry(const char *path) {
 
 	return NULL;
 }
+
 /* 
  * Create a file according to the given ABSOLUTE path
- * Eg: ramfs_create("/a.txt")
  */
 int ramfs_create(const char *path, char *msg) {
 	rd_inode *parent_inode;
@@ -443,6 +468,9 @@ int ramfs_create(const char *path, char *msg) {
 
 }
 
+/*
+ * Make a new directory according to the given path.
+ */
 int ramfs_mkdir(const char *path, char *msg) {
 	rd_inode *parent_inode;
 	rd_inode *file_inode;
@@ -513,7 +541,10 @@ int ramfs_mkdir(const char *path, char *msg) {
 	return 0;	
 }
 
-int ramfs_unlink(const char *path, char *msg) {
+/*
+ * Delete a regular file according to the given path
+ */
+int ramfs_delete(const char *path, char *msg) {
 	rd_inode *parent_inode;
 	rd_inode *file_inode;
 	char *filename;
@@ -546,11 +577,11 @@ int ramfs_unlink(const char *path, char *msg) {
 	for (i = 0; i < file_inode->block_count; ++i)
 		free_block(file_inode->block_addr[i]);
 	free_inode(file_inode);
-	sprintf(msg + strlen(msg), "Successfully unlink '%s'.\n", path);
+	sprintf(msg + strlen(msg), "Successfully delete '%s'.\n", path);
 	return 0;
 }
 /* 
- * Open a file
+ * Open a file according to the given path
  * Allocate a new fd for this file, then return the fd.
  */
 int ramfs_open(const char *path, int mode, char *msg) {
@@ -594,6 +625,9 @@ int ramfs_open(const char *path, int mode, char *msg) {
 	return fd;
 }
 
+/*
+ * Close a file according to the given fd.
+ */
 int ramfs_close(int fd, char *msg) {
 	
 	if (fd < 0 || fd >= RD_MAX_FILE) {
@@ -610,6 +644,10 @@ int ramfs_close(int fd, char *msg) {
 	return 0;
 }
 
+/*
+ * Read a file according to the given fd.
+ * return the number of bytes that are successfully read.
+ */
 int ramfs_read(int fd, char *buf, size_t count, char *msg) {
 	rd_file *file;
 	rd_inode *inode;
@@ -662,6 +700,10 @@ int ramfs_read(int fd, char *buf, size_t count, char *msg) {
 	return read_cnt;
 }
 
+/*
+ * Write a file according to the given fd.
+ * return the number of bytes that are successfully written.
+ */
 int ramfs_write(int fd, char *buf, size_t count, char *msg) {
 
 	rd_file *file;
@@ -727,6 +769,9 @@ int ramfs_write(int fd, char *buf, size_t count, char *msg) {
 	return write_cnt;
 }
 
+/*
+ * lseek (change the offset in fd) a file according to the given fd.
+ */
 int ramfs_lseek(int fd, int offset, char *msg) {
 	rd_file *file;
 	rd_inode *inode;
@@ -751,6 +796,9 @@ int ramfs_lseek(int fd, int offset, char *msg) {
 	return 0;
 }
 
+/*
+ * Show the status of all valid blocks
+ */
 int show_blocks_status(char *msg) {
 	int i, j;
 	char byte;
@@ -769,6 +817,9 @@ int show_blocks_status(char *msg) {
 	return 0;
 }
 
+/*
+ * Show the status of all valid inodes
+ */
 int show_inodes_status(char *msg) {
 	int i, j;
 	char* dirtype;
@@ -807,6 +858,9 @@ int show_inodes_status(char *msg) {
 	return 0;
 }
 
+/*
+ * Show the status of a directory. List all the files and sub-directories under it.
+ */
 int show_dir_status(const char *path, char *msg) {
 	char *filename;
 	rd_inode *par_inode;
@@ -849,6 +903,9 @@ int show_dir_status(const char *path, char *msg) {
 
 }
 
+/*
+ * Show the status of the File Descriptor Table
+ */
 int show_fdt_status(char *msg) {
 	int i;
 	rd_file *file;

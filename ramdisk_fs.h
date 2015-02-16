@@ -95,7 +95,7 @@ int ramfs_close(int fd, char *msg);
 int ramfs_read(int fd, char *buf, size_t count, char *msg);
 int ramfs_write(int fd, char *buf, size_t count, char *msg);
 int ramfs_lseek(int fd, int offset, char *msg);
-int ramfs_unlink(const char *path, char *msg);
+int ramfs_delete(const char *path, char *msg);
 
 /* Test Functions*/
 int show_blocks_status(char *msg);

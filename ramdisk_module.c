@@ -101,8 +101,8 @@ long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
 		case RD_LSEEK:
 			ret = ramfs_lseek(param.fd, param.offset, msg);
 			break;
-		case RD_UNLINK:
-			ret = ramfs_unlink(param.path, msg);
+		case RD_DELETE:
+			ret = ramfs_delete(param.path, msg);
 			break;
 		case RD_SHOWDIR:
 			show_dir_status(param.path, msg);

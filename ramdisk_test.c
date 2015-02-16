@@ -61,9 +61,9 @@ int rd_lseek(int fd, int offset) {
 	return ret;
 }
 
-int rd_unlink(char *path) {
+int rd_delete(char *path) {
 	strcpy(param.path, path);
-	ret = ioctl(dev_fd, RD_UNLINK, &param);
+	ret = ioctl(dev_fd, RD_DELETE, &param);
 	return ret;
 }
 
@@ -120,7 +120,7 @@ void show_fdt_status() {
  * 	mkdir /b
  * 	open /a.txt RD_RDONLY
  * 	close 1
- * 	unlink /a.txt
+ * 	delete /a.txt
  *  read 1 1024
  *  write 1 abcdefg
  *  lseek 1 0
@@ -161,8 +161,8 @@ int parse_command(char *str) {
 				cmd = RD_OPEN;
 			} else if (strcmp(buf, "close") == 0) {
 				cmd = RD_CLOSE;
-			} else if (strcmp(buf, "unlink") == 0) {
-				cmd = RD_UNLINK;
+			} else if (strcmp(buf, "delete") == 0) {
+				cmd = RD_DELETE;
 			} else if (strcmp(buf, "read") == 0) {
 				cmd = RD_READ;
 			} else if (strcmp(buf, "write") == 0) {
@@ -192,7 +192,7 @@ int parse_command(char *str) {
 			case RD_CREATE:
 			case RD_MKDIR:
 			case RD_OPEN:
-			case RD_UNLINK:
+			case RD_DELETE:
 			case RD_SHOWDIR:
 				if (strlen(buf) > RD_MAX_PATH_LEN) {
 					// too large
@@ -270,7 +270,7 @@ int parse_command(char *str) {
 		++cnt;
     }
     if (cmd == RD_CREATE || cmd == RD_MKDIR ||
-		cmd == RD_OPEN || cmd == RD_UNLINK ||
+		cmd == RD_OPEN || cmd == RD_DELETE ||
 		cmd == RD_SHOWDIR) {
     	if (strlen(path) == 0)
     		return -1;
@@ -375,7 +375,7 @@ int execute_command() {
 			printf("close <FD> (eg. close 1)\n");
 			printf("write <FD> <DATA> (eg. write 1 Hello,world)\n");
 			printf("lseek <FD> <OFFSET> (eg. lseek 1 0)\n");
-			printf("unlink <ABSOLUTE PATH> (eg. unlink /a.txt)\n");
+			printf("delete <ABSOLUTE PATH> (eg. delete /a.txt)\n");
 			printf("showdir <ABSOLUTE PATH> (eg. showdir /)\n");
 			printf("showblocks\n");
 			printf("showinodes\n");

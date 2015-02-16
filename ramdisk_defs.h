@@ -28,7 +28,7 @@
 #define RD_READ             0xf5
 #define RD_WRITE            0xf6
 #define RD_LSEEK            0xf7
-#define RD_UNLINK           0xf8
+#define RD_DELETE           0xf8
 #define RD_SHOWDIR          0xf9
 #define RD_SHOWBLOCKS       0xfa
 #define RD_SHOWINODES       0xfb
