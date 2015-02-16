@@ -13,7 +13,8 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("LX & JTY");
 MODULE_DESCRIPTION("A ramdisk device.");
 
-
+char msg[4096] = {0};
+rd_param param;
 /* On Ramdisk Module Init */
 static int __init ramdisk_init(void);
 
@@ -64,14 +65,13 @@ int ramdisk_release(struct inode *inode, struct file *file) {
 
 long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
 
-	rd_param param;
+
 	int fd, ret;
-	char *msg, *buf;
+	char *buf;
 	if (arg != 0)
 		copy_from_user(&param, (rd_param*)arg, sizeof(rd_param));
 	fd = -1;
 	ret = 0;
-	msg = (char*)vmalloc(4096);
 	memset(msg, 0, 4096);
 	switch(cmd) {
 		case RD_CREATE:
@@ -125,7 +125,6 @@ long ramdisk_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
 			break;
 	}
 	copy_to_user(param.msg_addr, msg, strlen(msg) + 1);
-	vfree(msg);
 	return ret;
 }
 

@@ -201,6 +201,7 @@ int parse_command(char *str) {
 				strcpy(path, buf);
 				break;
 			case RD_WRITE:
+				str[strlen(str)-1] = 0;
 				strcpy(write_data, str);
 				len = strlen(str);
 				write_flag = 1;
